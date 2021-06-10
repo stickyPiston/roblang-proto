@@ -1,0 +1,12 @@
+{
+  "name": "roblang-proto",
+  "version": "1.0.0",
+  "main": "sec/main.coffee",
+  "license": "MIT",
+  "scripts": {
+    "start": "coffee --compile --output bin src/ && node bin/main.js"
+  },
+  "devDependencies": {
+    "coffeescript": "^2.5.1"
+  }
+}
