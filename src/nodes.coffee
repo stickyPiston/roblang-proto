@@ -1,3 +1,5 @@
+{ intrinsics, mustReturn, resetReturn } = require "./intrinsics"
+
 class Node
   constructor: -> type = "None"
 
@@ -36,9 +38,18 @@ class CallNode extends Node
     type = "Call"
   
   evaluate: (scope) ->
-    newScope = {}
-    newScope[param.name] = @args[i].evaluate scope for param, i in scope[@callee].params
-    N.evaluate(newScope) for N in scope[@callee].body
+    if @callee of intrinsics
+      intrinsics[@callee](scope, @args)
+    else
+      currentFunction = scope[@callee]
+      newScope = {}
+      newScope[param.name] = @args[i].evaluate scope for param, i in scope[@callee].params
+      for N in scope[@callee].body
+        N.evaluate(newScope)
+        if mustReturn() isnt false
+          returnValue = mustReturn()
+          resetReturn()
+          return returnValue
 
 class FunctionNode extends Node
   constructor: (@params, @body) ->

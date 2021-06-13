@@ -4,13 +4,14 @@
 operators = [
   "=", "+=", "-=", "/=", "*=", "||=", "&&=", "<<=", ">>=", "&=",
   "|=", "^=", "&&", "||", "^^", "<", ">", "<=", ">=", "==", "!=",
-  "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~"
+  "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~", ":"
 ]
 
 parse = (tokens) ->
   N = []
   loop
     [E, tokens] = parseExpression tokens
+    tokens = tokens[1..]
     N.push E if E
     if tokens?.length is 0 or tokens is undefined then break
   N
@@ -25,7 +26,6 @@ parseExpression = (tokens, delims = [";"]) ->
       if token.value in ["(", "[", "{"] then level++
       if token.value in [")", "]", "}"] then level--
       hasOperator = hasOperator or (token.value in operators and level is 0)
-
   if hasOperator
     for operator in operators
       level = 0; endIndex = 0
@@ -36,15 +36,14 @@ parseExpression = (tokens, delims = [";"]) ->
           LHStokens = tokens[..index-1]
           l = 0
           for t, i in tokens[index..]
-            if t.value in ["(", "[", "{"] then l++
-            else if t.value in [")", "]", "}"] then l--
-            else if t.value in delims and l is 0
+            if t.value in delims and l is 0
               endIndex = index + i
               break
-          # console.log tokens, endIndex, tokens[endIndex-1]
-          endIndex = if endIndex is undefined then tokens.length else endIndex
+            if t.value in ["(", "[", "{"] then l++
+            else if t.value in [")", "]", "}"] then l--
+          endIndex = if endIndex is 0 then tokens.length else endIndex
           RHStokens = tokens[index+1..endIndex]
-          return [(new BinopNode operator, (parseExpression LHStokens)[0], (parseExpression RHStokens)[0]), tokens[endIndex+1..]]
+          return [(new BinopNode operator, (parseExpression LHStokens, delims)[0], (parseExpression RHStokens, delims)[0]), tokens[endIndex..]]
   else
     return parsePrimary tokens
 
