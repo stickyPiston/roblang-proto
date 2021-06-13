@@ -37,9 +37,15 @@ class CallNode extends Node
     super()
     type = "Call"
 
+class FunctionNode extends Node
+  constructor: (@params, @body) ->
+    super()
+    type = "Function"
+
 module.exports =
   Node: Node
   BinopNode: BinopNode
   IdentifierNode: IdentifierNode
   NumberNode: NumberNode
   CallNode: CallNode
+  FunctionNode: FunctionNode
