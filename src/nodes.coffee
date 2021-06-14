@@ -1,12 +1,12 @@
 { intrinsics, mustReturn, resetReturn } = require "./intrinsics"
 
 class Node
-  constructor: -> type = "None"
+  constructor: -> @type = "None"
 
 class BinopNode extends Node
   constructor: (@operator, @LHS, @RHS) ->
     super()
-    type = "Binop"
+    @type = "Binop"
   
   evaluate: (scope) ->
     lval = @LHS.evaluate(scope)
@@ -16,32 +16,36 @@ class BinopNode extends Node
       when @operator is "-" then lval - rval
       when @operator is "*" then lval * rval
       when @operator is "/" then lval / rval
+      when @operator is "<" then lval < rval
+      when @operator is ">" then lval > rval
+      when @operator is "<=" then lval <= rval
+      when @operator is ">=" then lval >= rval
       when @operator is "=" then scope[@LHS.name] = rval
 
 class IdentifierNode extends Node
   constructor: (@name) ->
     super()
-    type = "Identifier"
+    @type = "Identifier"
   
   evaluate: (scope) -> scope[@name]
 
 class NumberNode extends Node
   constructor: (@value) ->
     super()
-    type = "Number"
+    @type = "Number"
   
   evaluate: (_) -> @value
 
 class CallNode extends Node
   constructor: (@callee, @args) ->
     super()
-    type = "Call"
+    @type = "Call"
   
   evaluate: (scope) ->
     if @callee of intrinsics
       intrinsics[@callee](scope, @args)
     else
-      currentFunction = scope[@callee]
+      if scope[@callee].body is undefined then return
       newScope = {}
       newScope[param.name] = @args[i].evaluate scope for param, i in scope[@callee].params
       for N in scope[@callee].body
@@ -54,9 +58,16 @@ class CallNode extends Node
 class FunctionNode extends Node
   constructor: (@params, @body) ->
     super()
-    type = "Function"
+    @type = "Function"
 
   evaluate: (_) -> this
+
+class StringLiteralNode extends Node
+  constructor: (@value) ->
+    super()
+    @type = "String"
+  
+  evaluate: (_) -> @value
 
 module.exports =
   Node: Node
@@ -65,3 +76,4 @@ module.exports =
   NumberNode: NumberNode
   CallNode: CallNode
   FunctionNode: FunctionNode
+  StringLiteralNode: StringLiteralNode

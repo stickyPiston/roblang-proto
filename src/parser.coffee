@@ -1,4 +1,4 @@
-{ IdentifierNode, CallNode, BinopNode,
+{ IdentifierNode, CallNode, BinopNode, StringLiteralNode,
   NumberNode, FunctionNode } = require "./nodes"
 
 operators = [
@@ -60,7 +60,9 @@ parseIdentifierExpression = (tokens) ->
   else 
     [(new IdentifierNode tokens[0].value), tokens[1..]]
 
-parseNumber = (tokens) -> [(new NumberNode(Number(tokens[0].value))), tokens[1..]]
+parseNumber = (tokens) -> [(new NumberNode Number(tokens[0].value)), tokens[1..]]
+
+parseStringLiteral = (tokens) -> [(new StringLiteralNode tokens[0].value), tokens[1..]]
 
 parseParenExpression = (tokens) ->
   level = 0; index = 0
@@ -84,7 +86,7 @@ parseParenExpression = (tokens) ->
       body.push E
       index++ until tokens[index].value is ";"
       index++
-    [(new FunctionNode params, body), tokens[index..]]
+    [(new FunctionNode (params.filter Boolean), body), tokens[index+1..]]
   else
     parseExpression tokens[1..], [")"]
 
@@ -92,6 +94,7 @@ parsePrimary = (tokens) ->
   switch
     when tokens[0].type is "Identifier" then parseIdentifierExpression tokens
     when tokens[0].type is "Number" then parseNumber tokens
+    when tokens[0].type is "String" then parseStringLiteral tokens
     when tokens[0].value is "(" then parseParenExpression tokens
     else [null, []]
 
