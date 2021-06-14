@@ -1,3 +1,5 @@
+{ ScopeManager, Scope } = require "./scope"
+
 roblangPrint = (scope, args) ->
   console.log arg.evaluate scope for arg in args
 
@@ -9,7 +11,7 @@ roblangIf = (scope, args) ->
   cond = args[0].evaluate scope
   returnValue = (val) ->
       if val.type is "Function"
-        newScope = {}
+        newScope = ScopeManager.add new Scope scope
         for N in val.body
           N.evaluate(newScope)
           if mustReturn isnt false

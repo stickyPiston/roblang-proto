@@ -1,25 +1,26 @@
 lex = require "./lexer"
 parse = require "./parser"
+{ ScopeManager, Scope } = require "./scope"
 
 #  greet = () -> { print("Hello, world!"); };
 #  greet();
 tokens = lex """
-  isSmaller = (x, y) -> {
+  min = (x, y) -> {
     return(
       if(x < y, () -> {
-        return(1);
+        return(x);
       }, () -> {
-        return(0);
+        return(y);
       })
     );
   };
 
-  print(isSmaller(20, 30));
+  print(min(20, 30));
   """
 
 nodes = parse tokens
 
 # console.log nodes
 
-globalScope = {}
+globalScope = ScopeManager.add new Scope
 node.evaluate(globalScope) for node in nodes

@@ -1,4 +1,5 @@
 { intrinsics, mustReturn, resetReturn } = require "./intrinsics"
+{ ScopeManager, Scope } = require "./scope"
 
 class Node
   constructor: -> @type = "None"
@@ -9,25 +10,28 @@ class BinopNode extends Node
     @type = "Binop"
   
   evaluate: (scope) ->
-    lval = @LHS.evaluate(scope)
-    rval = @RHS.evaluate(scope)
-    switch
-      when @operator is "+" then lval + rval
-      when @operator is "-" then lval - rval
-      when @operator is "*" then lval * rval
-      when @operator is "/" then lval / rval
-      when @operator is "<" then lval < rval
-      when @operator is ">" then lval > rval
-      when @operator is "<=" then lval <= rval
-      when @operator is ">=" then lval >= rval
-      when @operator is "=" then scope[@LHS.name] = rval
+    if @operator isnt "="
+      lval = @LHS.evaluate(scope)
+      rval = @RHS.evaluate(scope)
+      switch
+        when @operator is "+" then lval + rval
+        when @operator is "-" then lval - rval
+        when @operator is "*" then lval * rval
+        when @operator is "/" then lval / rval
+        when @operator is "<" then lval < rval
+        when @operator is ">" then lval > rval
+        when @operator is "<=" then lval <= rval
+        when @operator is ">=" then lval >= rval
+    else
+      ScopeManager.set scope, @LHS.name, @RHS.evaluate(scope)
 
 class IdentifierNode extends Node
   constructor: (@name) ->
     super()
     @type = "Identifier"
   
-  evaluate: (scope) -> scope[@name]
+  evaluate: (scope) ->
+    ScopeManager.recall scope, @name
 
 class NumberNode extends Node
   constructor: (@value) ->
@@ -45,10 +49,10 @@ class CallNode extends Node
     if @callee of intrinsics
       intrinsics[@callee](scope, @args)
     else
-      if scope[@callee].body is undefined then return
-      newScope = {}
-      newScope[param.name] = @args[i].evaluate scope for param, i in scope[@callee].params
-      for N in scope[@callee].body
+      if (ScopeManager.recall scope, @callee).body is undefined then return
+      newScope = ScopeManager.add new Scope scope
+      (ScopeManager.set newScope, param.name, @args[i].evaluate scope) for param, i in (ScopeManager.recall scope, @callee).params
+      for N in (ScopeManager.recall scope, @callee).body
         N.evaluate(newScope)
         if mustReturn() isnt false
           returnValue = mustReturn()
