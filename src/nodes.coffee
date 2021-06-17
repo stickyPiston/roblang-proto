@@ -2,7 +2,9 @@
 { ScopeManager, Scope } = require "./scope"
 
 class Node
-  constructor: -> @type = "None"
+  constructor: ->
+    @type = "None"
+    @types = {}
 
 class BinopNode extends Node
   constructor: (@operator, @LHS, @RHS) ->

@@ -1,10 +1,11 @@
 { IdentifierNode, CallNode, BinopNode, StringLiteralNode,
   NumberNode, FunctionNode } = require "./nodes"
+{ stringToType } = require "./checker"
 
 operators = [
   "=", "+=", "-=", "/=", "*=", "||=", "&&=", "<<=", ">>=", "&=",
   "|=", "^=", "&&", "||", "^^", "<", ">", "<=", ">=", "==", "!=",
-  "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~", ":"
+  "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~"
 ]
 
 parse = (tokens) ->
@@ -57,7 +58,11 @@ parseIdentifierExpression = (tokens) ->
       [E, tokens] = parseExpression tokens, [",", ")"]
       args.push E
     [(new CallNode callee, args), tokens[1..]]
-  else 
+  else if tokens[1]?.value is ":"
+    node = new IdentifierNode tokens[0].value
+    node.types = stringToType tokens[2].value
+    [node, tokens[3..]]
+  else
     [(new IdentifierNode tokens[0].value), tokens[1..]]
 
 parseNumber = (tokens) -> [(new NumberNode Number(tokens[0].value)), tokens[1..]]
@@ -71,22 +76,31 @@ parseParenExpression = (tokens) ->
     if token.value in [")", "]", "}"] then level--
     if level is 0 and token.value is ")" then break
     index++
-  if tokens[index+1]?.value is "->"
-    params = []; paramIndex = 1
+  if tokens[index+1]?.value is "->" or tokens[index+1]?.value is ":"
+    params = []; paramIndex = 1; paramTypes = []
     loop
-      [E, _] = parseExpression tokens[paramIndex..index], [",)"]
+      [E, _] = parseExpression tokens[paramIndex..index], [")", ","]
       params.push E
+      paramTypes.push E.types
       paramIndex++ until tokens[paramIndex].value in [",", ")"]
       if tokens[paramIndex].value is ")" then break
       else paramIndex++
-    index += 3 # skip to opening {
+    returnType = null
+    if tokens[++paramIndex].value is ":"
+      returnType = stringToType tokens[++paramIndex].value
+      paramIndex += 3
+    else paramIndex += 3 # skip to opening {
+    # console.log paramIndex, tokens, tokens[paramIndex]
     body = []
+    index = paramIndex
     until tokens[index].value is "}"
       [E, _] = parseExpression tokens[index..]
       body.push E
       index++ until tokens[index].value is ";"
       index++
-    [(new FunctionNode (params.filter Boolean), body), tokens[index+1..]]
+    node = new FunctionNode (params.filter Boolean), body
+    node.types = { ret: returnType, params: paramTypes }
+    [node, tokens[index+1..]]
   else
     parseExpression tokens[1..], [")"]
 

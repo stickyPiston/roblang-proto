@@ -1,5 +1,6 @@
 lex = require "./lexer"
 parse = require "./parser"
+finalise = require "./finalise"
 { ScopeManager, Scope } = require "./scope"
 { readFileSync } = require "fs"
 
@@ -21,10 +22,12 @@ runCli = ->
 
 runScript = (script) ->
   tokens = lex script
-  nodes = parse tokens
+  nodes = finalise parse tokens
 
-  globalScope = ScopeManager.add new Scope
-  node.evaluate(globalScope) for node in nodes
+  console.log nodes
+
+  # globalScope = ScopeManager.add new Scope
+  # node.evaluate(globalScope) for node in nodes
 
 displayHelp = ->
   console.log """Roblang CLI:
