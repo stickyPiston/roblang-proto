@@ -1,6 +1,7 @@
 lex = require "./lexer"
 parse = require "./parser"
 finalise = require "./finalise"
+check = require "./checker"
 { ScopeManager, Scope } = require "./scope"
 { readFileSync } = require "fs"
 
@@ -24,7 +25,8 @@ runScript = (script) ->
   tokens = lex script
   nodes = finalise parse tokens
 
-  console.log nodes
+  # console.log nodes
+  check nodes
 
   # globalScope = ScopeManager.add new Scope
   # node.evaluate(globalScope) for node in nodes

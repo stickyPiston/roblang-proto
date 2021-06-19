@@ -1,46 +1,61 @@
-class Type
-  constructor: (@type) ->
+{ FunctionType, stringToType } = require "./types"
+scope = {
+  putd: new FunctionType [stringToType "i64"], stringToType "i32"
+}; currentScope = "";
+check = (nodes) -> checkNode node for node in nodes
+checkNode = (node) ->
+  if node.type is "Call"
+    # Check if params match up
+    func = getFromScope node.callee
+    if node.callee is "return"
+      # In the future: check compliance with function return type
+      if node.args.length isnt 1
+        console.error "Wrong number of arguments to return call"
+        process.exit 1
+      checkNode node.args[0]
+      return
+    for arg, index in node.args
+      checkNode arg
+      unless canAssignTo func.params[index], arg.types
+        console.error "Type mismatch, cannot assign #{arg.types.name} to #{func.params[index].name}"
+        process.exit 1
+  else if node.type is "Binop"
+    # Check if LHS and RHS make for a good combo
+    if node.operator is "="
+      checkNode node.RHS
+      if node.LHS.type is "Binop"
+        unless canAssignTo node.LHS.RHS, node.RHS.types
+          console.error "Type mismatch, cannot assign #{node.RHS.types.name} to #{node.LHS.RHS.name} in assignment"
+          process.exit 1
+        else writeToScope node.LHS.LHS, node.LHS.RHS
+      else writeToScope node.LHS.name, node.RHS.types
+    else
+      check [node.LHS, node.RHS]
+      unless ((isNumber node.LHS.types) and (isNumber node.RHS.types)) # not canAssignTo node.LHS.types, node.RHS.types
+        console.error "No available operator #{node.LHS.types.name} #{node.operator} #{node.RHS.types.name}"
+        process.exit 1
+  else if node.type is "Function" then check node.body
 
-class BasicType extends Type
-  constructor: (@name) -> super "Basic"
+canAssignTo = (type_a, type_b) ->
+  a = type_a.name; b = type_b.name
+  if a is "u16" and b is "u8" then return true
+  else if a is "u32" and b in ["u8", "u16"] then return true 
+  else if a is "u64" and b in ["u8", "u16", "u32"] then return true
+  else if a is "i16" and b in ["i8", "u8"] then return true
+  else if a is "i32" and b in ["i8", "u8", "i16", "u16"] then return true
+  else if a is "i64" and b in ["i8", "u8", "i16", "u16", "u32", "i32"] then return true
+  else if a is b then return true
+  return false
 
-class RoblangU8 extends BasicType
-  constructor: -> super "u8"
+isNumber = (type) -> type.type is "Basic"
 
-class RoblangI8 extends BasicType
-  constructor: -> super "i8"
+# @type {(name: string) => Type}
+getFromScope = (name) ->
+  if currentScope is "" then scope[name]
+  else scope[currentScope][name] # For now assuming that function won't be put in functions
 
-class RoblangU16 extends BasicType
-  constructor: -> super "u16"
+writeToScope = (name, value) ->
+  if currentScope is "" then scope[name] = value
+  else scope[currentScope][name] = value
 
-class RoblangI16 extends BasicType
-  constructor: -> super "i16"
-
-class RoblangU32 extends BasicType
-  constructor: -> super "u32"
-
-class RoblangI32 extends BasicType
-  constructor: -> super "i32"
-
-class RoblangU64 extends BasicType
-  constructor: -> super "u64"
-
-class RoblangI64 extends BasicType
-  constructor: -> super "i64"
-
-class FunctionType extends Type
-  constructor: (@params, @ret) -> super "Function"
-
-class PointerType extends Type
-  constructor: (@type) -> super "Pointer"
-
-stringToType = (str) ->
-  if str in ["i8", "u8", "i16", "u16", "u32", "i32", "u64", "i64"]
-    new BasicType str
-
-module.exports =
-  Type: Type
-  BasicType: BasicType
-  FunctionType: FunctionType
-  PointerType: PointerType
-  stringToType: stringToType
+module.exports = check

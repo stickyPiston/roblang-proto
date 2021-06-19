@@ -30,7 +30,7 @@ roblangIf = (scope, args) ->
 
 module.exports =
   intrinsics:
-    "print": roblangPrint
+    "putd": roblangPrint
     "return": roblangReturn
     "if": roblangIf 
   mustReturn: -> mustReturn

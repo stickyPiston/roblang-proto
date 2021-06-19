@@ -1,7 +1,7 @@
-{ PointerType, FunctionType, stringToType } = require "./checker"
+{ PointerType, FunctionType, stringToType } = require "./types"
 
 scope = {
-  puts: new FunctionType [stringToType "i32"], stringToType "i32"
+  putd: new FunctionType [stringToType "i32"], stringToType "i32"
 }; currentScope = ""
 finalise = (nodes) -> finaliseNode node for node in nodes
 
@@ -11,8 +11,7 @@ finaliseNode = (node) ->
     when "String", "Identifier", "Number"
       node.types = deriveType node
     when "Function"
-      writeToScope param.name, param.types for param in node.params
-      # console.log param for param in node.params
+      writeToScope param, node.types.params[index] for param, index in node.params
       node.body = finalise node.body
       node.types = deriveType node
       # console.log node
@@ -63,8 +62,8 @@ deriveType = (node) ->
               bits = [8, 16, 32, 64, 0]
               Math.max 64, bits[(bits.findIndex (e) -> e is start) + 1]
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
-            if LHSbits < RHSbits then signedness + nextBasicType RHSbits
-            else signedness + nextBasicType LHSbits
+            if LHSbits < RHSbits then stringToType signedness + nextBasicType RHSbits
+            else stringToType signedness + nextBasicType LHSbits
         when "/"
           LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
           if LHStype.type is "Basic" and RHStype.type is "Basic"

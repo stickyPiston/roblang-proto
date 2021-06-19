@@ -1,6 +1,6 @@
 { IdentifierNode, CallNode, BinopNode, StringLiteralNode,
   NumberNode, FunctionNode } = require "./nodes"
-{ stringToType } = require "./checker"
+{ stringToType, FunctionType } = require "./types"
 
 operators = [
   "=", "+=", "-=", "/=", "*=", "||=", "&&=", "<<=", ">>=", "&=",
@@ -59,9 +59,7 @@ parseIdentifierExpression = (tokens) ->
       args.push E
     [(new CallNode callee, args), tokens[1..]]
   else if tokens[1]?.value is ":"
-    node = new IdentifierNode tokens[0].value
-    node.types = stringToType tokens[2].value
-    [node, tokens[3..]]
+    [(new BinopNode ":", tokens[0].value, stringToType tokens[2].value), tokens[3..]]
   else
     [(new IdentifierNode tokens[0].value), tokens[1..]]
 
@@ -80,8 +78,10 @@ parseParenExpression = (tokens) ->
     params = []; paramIndex = 1; paramTypes = []
     loop
       [E, _] = parseExpression tokens[paramIndex..index], [")", ","]
-      params.push E
-      paramTypes.push E.types
+      if E.type is "Binop"
+        params.push E.LHS
+        paramTypes.push E.RHS
+      else params.push E
       paramIndex++ until tokens[paramIndex].value in [",", ")"]
       if tokens[paramIndex].value is ")" then break
       else paramIndex++
@@ -99,7 +99,7 @@ parseParenExpression = (tokens) ->
       index++ until tokens[index].value is ";"
       index++
     node = new FunctionNode (params.filter Boolean), body
-    node.types = { ret: returnType, params: paramTypes }
+    node.types = new FunctionType paramTypes, returnType
     [node, tokens[index+1..]]
   else
     parseExpression tokens[1..], [")"]
