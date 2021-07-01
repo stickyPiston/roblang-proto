@@ -8,5 +8,8 @@
   },
   "devDependencies": {
     "coffeescript": "^2.5.1"
+  },
+  "dependencies": {
+    "llvm-bindings": "^0.2.0"
   }
 }

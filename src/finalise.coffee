@@ -27,6 +27,8 @@ finaliseNode = (node) ->
         else writeToScope node.LHS.name, deriveType node.RHS
         # console.log "Writing #{node.LHS} to ", scope
       node.types = deriveType node
+    when "Number"
+      node.types = deriveType node
   node
 
 # @type {(node: Node) => Type}
@@ -45,9 +47,20 @@ deriveType = (node) ->
         else if node.value >= -9.223372036854776e18 then stringToType "i64"
     when "String" then new PointerType stringToType "u8"
     when "Identifier" then getFromScope node.name
-    when "Function" then new FunctionType node.types.params, node.types.ret
-    when "Call" 
-      if node.callee is "return" then node.args[0].types
+    when "Function"
+      if node.types.ret isnt null
+        new FunctionType node.types.params, node.types.ret
+      else
+        returnType = null; index = 0
+        while returnType is null and index < node.body.length
+          if node.body[index].type is "Call" and node.body[index].callee is "return"
+            returnType = node.body[index].types
+          index++
+        new FunctionType node.types.params, returnType
+    when "Call"
+      if node.callee is "return"
+        if node.args.length is 0 then stringToType "void"
+        else node.args[0].types
       else
         # console.log node.callee, scope
         (getFromScope node.callee).ret
@@ -57,17 +70,17 @@ deriveType = (node) ->
         when "+", "-", "*"
           LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
           if LHStype.type is "Basic" and RHStype.type is "Basic"
-            LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..]);
+            LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             nextBasicType = (start) ->
-              bits = [8, 16, 32, 64, 0]
-              Math.max 64, bits[(bits.findIndex (e) -> e is start) + 1]
+              bits = [8, 16, 32, 64, 128]
+              Math.min 64, bits[(bits.findIndex (e) -> e is start) + 1]
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             if LHSbits < RHSbits then stringToType signedness + nextBasicType RHSbits
             else stringToType signedness + nextBasicType LHSbits
         when "/"
           LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
           if LHStype.type is "Basic" and RHStype.type is "Basic"
-            LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..]);
+            LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             stringToType signedness + Math.max LHSbits, RHSbits
         when "="

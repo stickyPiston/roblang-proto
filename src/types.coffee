@@ -28,6 +28,9 @@ class RoblangU64 extends BasicType
 class RoblangI64 extends BasicType
   constructor: -> super "i64"
 
+class RoblangVoid extends BasicType
+  constructor: -> super "void"
+
 class FunctionType extends Type
   constructor: (@params, @ret) -> super "Function"
 
@@ -35,7 +38,7 @@ class PointerType extends Type
   constructor: (@type) -> super "Pointer"
 
 stringToType = (str) ->
-  if str in ["i8", "u8", "i16", "u16", "u32", "i32", "u64", "i64"]
+  if str in ["i8", "u8", "i16", "u16", "u32", "i32", "u64", "i64", "void"]
     new BasicType str
 
 module.exports =

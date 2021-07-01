@@ -2,7 +2,7 @@ lex = require "./lexer"
 parse = require "./parser"
 finalise = require "./finalise"
 check = require "./checker"
-{ ScopeManager, Scope } = require "./scope"
+compile = require "./compile"
 { readFileSync } = require "fs"
 
 runCli = ->
@@ -24,12 +24,9 @@ runCli = ->
 runScript = (script) ->
   tokens = lex script
   nodes = finalise parse tokens
-
   # console.log nodes
   check nodes
-
-  # globalScope = ScopeManager.add new Scope
-  # node.evaluate(globalScope) for node in nodes
+  compile nodes
 
 displayHelp = ->
   console.log """Roblang CLI:

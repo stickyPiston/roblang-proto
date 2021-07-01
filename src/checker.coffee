@@ -1,7 +1,7 @@
 { FunctionType, stringToType } = require "./types"
 scope = {
   putd: new FunctionType [stringToType "i64"], stringToType "i32"
-}; currentScope = "";
+}; currentScope = ""
 check = (nodes) -> checkNode node for node in nodes
 checkNode = (node) ->
   if node.type is "Call"
@@ -9,10 +9,11 @@ checkNode = (node) ->
     func = getFromScope node.callee
     if node.callee is "return"
       # In the future: check compliance with function return type
-      if node.args.length isnt 1
+      if node.args.length > 1
         console.error "Wrong number of arguments to return call"
         process.exit 1
-      checkNode node.args[0]
+      if node.args.length is 1
+        checkNode node.args[0]
       return
     for arg, index in node.args
       checkNode arg
@@ -37,15 +38,18 @@ checkNode = (node) ->
   else if node.type is "Function" then check node.body
 
 canAssignTo = (type_a, type_b) ->
-  a = type_a.name; b = type_b.name
-  if a is "u16" and b is "u8" then return true
-  else if a is "u32" and b in ["u8", "u16"] then return true 
-  else if a is "u64" and b in ["u8", "u16", "u32"] then return true
-  else if a is "i16" and b in ["i8", "u8"] then return true
-  else if a is "i32" and b in ["i8", "u8", "i16", "u16"] then return true
-  else if a is "i64" and b in ["i8", "u8", "i16", "u16", "u32", "i32"] then return true
-  else if a is b then return true
-  return false
+  if type_a.type is "Basic" and type_b.type is "Basic"
+    a = type_a.name; b = type_b.name
+    if a is "u16" and b is "u8" then return true
+    else if a is "u32" and b in ["u8", "u16"] then return true
+    else if a is "u64" and b in ["u8", "u16", "u32"] then return true
+    else if a is "i16" and b in ["i8", "u8"] then return true
+    else if a is "i32" and b in ["i8", "u8", "i16", "u16"] then return true
+    else if a is "i64" and b in ["i8", "u8", "i16", "u16", "u32", "i32"] then return true
+    else if a is b then return true
+    return false
+  else if type_b is "Function"
+    return canAssignTo type_a, type_b.ret
 
 isNumber = (type) -> type.type is "Basic"
 

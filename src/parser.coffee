@@ -78,18 +78,19 @@ parseParenExpression = (tokens) ->
     params = []; paramIndex = 1; paramTypes = []
     loop
       [E, _] = parseExpression tokens[paramIndex..index], [")", ","]
-      if E.type is "Binop"
-        params.push E.LHS
-        paramTypes.push E.RHS
-      else params.push E
-      paramIndex++ until tokens[paramIndex].value in [",", ")"]
+      if E isnt null
+        if E.type is "Binop"
+          params.push E.LHS
+          paramTypes.push E.RHS
+        else params.push E
+        paramIndex++ until tokens[paramIndex].value in [",", ")"]
       if tokens[paramIndex].value is ")" then break
       else paramIndex++
     returnType = null
     if tokens[++paramIndex].value is ":"
       returnType = stringToType tokens[++paramIndex].value
       paramIndex += 3
-    else paramIndex += 3 # skip to opening {
+    else paramIndex += 2 # skip to opening {
     # console.log paramIndex, tokens, tokens[paramIndex]
     body = []
     index = paramIndex
