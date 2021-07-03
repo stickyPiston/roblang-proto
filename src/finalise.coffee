@@ -1,8 +1,8 @@
 { PointerType, FunctionType, stringToType } = require "./types"
 
 scope = {
-  putd: new FunctionType [stringToType "i32"], stringToType "i32"
-}; currentScope = ""
+  puts: new FunctionType [new PointerType stringToType "u8"], stringToType "i32"
+}; currentScope = ""; currentFunc = null
 finalise = (nodes) -> finaliseNode node for node in nodes
 
 finaliseNode = (node) ->
@@ -12,8 +12,10 @@ finaliseNode = (node) ->
       node.types = deriveType node
     when "Function"
       writeToScope param, node.types.params[index] for param, index in node.params
+      currentFunc = node.types
       node.body = finalise node.body
       node.types = deriveType node
+      currentFunc = null
       # console.log node
     when "Call"
       node.args = finalise node.args
@@ -27,6 +29,14 @@ finaliseNode = (node) ->
         else writeToScope node.LHS.name, deriveType node.RHS
         # console.log "Writing #{node.LHS} to ", scope
       node.types = deriveType node
+    when "Index"
+      baseType = deriveType node.value
+      if baseType.type isnt "Pointer"
+        console.error "Dereferencing a non-pointer variable"
+        process.exit 1
+      else
+        node.types = baseType.base
+        node.index = finaliseNode node.index
     when "Number"
       node.types = deriveType node
   node
@@ -52,9 +62,12 @@ deriveType = (node) ->
         new FunctionType node.types.params, node.types.ret
       else
         returnType = null; index = 0
+        console.log "Determining return type", node.body
         while returnType is null and index < node.body.length
           if node.body[index].type is "Call" and node.body[index].callee is "return"
             returnType = node.body[index].types
+            break
+          console.log returnType
           index++
         new FunctionType node.types.params, returnType
     when "Call"
@@ -64,11 +77,11 @@ deriveType = (node) ->
       else
         # console.log node.callee, scope
         (getFromScope node.callee).ret
+    when "Index" then node.types.base
     when "Binop"
-      # console.log node
       switch node.operator
         when "+", "-", "*"
-          LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
+          LHStype = node.LHS.types; RHStype = node.RHS.types
           if LHStype.type is "Basic" and RHStype.type is "Basic"
             LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             nextBasicType = (start) ->

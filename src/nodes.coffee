@@ -1,6 +1,3 @@
-{ intrinsics, mustReturn, resetReturn } = require "./intrinsics"
-{ ScopeManager, Scope } = require "./scope"
-
 class Node
   constructor: ->
     @type = "None"
@@ -36,11 +33,18 @@ class StringLiteralNode extends Node
     super()
     @type = "String"
 
-module.exports =
-  Node: Node
-  BinopNode: BinopNode
-  IdentifierNode: IdentifierNode
-  NumberNode: NumberNode
-  CallNode: CallNode
-  FunctionNode: FunctionNode
-  StringLiteralNode: StringLiteralNode
+class IndexNode extends Node
+  constructor: (@value, @index) ->
+    super()
+    @type = "Index"
+
+module.exports = {
+  Node,
+  BinopNode,
+  IdentifierNode,
+  NumberNode,
+  CallNode,
+  FunctionNode,
+  StringLiteralNode,
+  IndexNode
+}

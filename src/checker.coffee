@@ -1,6 +1,7 @@
-{ FunctionType, stringToType } = require "./types"
+{ PointerType, FunctionType, stringToType } = require "./types"
 scope = {
   putd: new FunctionType [stringToType "i64"], stringToType "i32"
+  puts: new FunctionType [new PointerType stringToType "u8"], stringToType "i32"
 }; currentScope = ""
 check = (nodes) -> checkNode node for node in nodes
 checkNode = (node) ->
@@ -18,6 +19,7 @@ checkNode = (node) ->
     for arg, index in node.args
       checkNode arg
       unless canAssignTo func.params[index], arg.types
+        console.error arg.types, func.params[index]
         console.error "Type mismatch, cannot assign #{arg.types.name} to #{func.params[index].name}"
         process.exit 1
   else if node.type is "Binop"
@@ -50,6 +52,8 @@ canAssignTo = (type_a, type_b) ->
     return false
   else if type_b is "Function"
     return canAssignTo type_a, type_b.ret
+  else if type_a.type is "Pointer" is type_b.type is "Pointer"
+    return canAssignTo type_a.base, type_b.base
 
 isNumber = (type) -> type.type is "Basic"
 

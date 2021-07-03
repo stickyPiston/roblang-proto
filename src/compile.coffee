@@ -3,13 +3,6 @@ llvm = require "llvm-bindings"
 context = new llvm.LLVMContext()
 mod = new llvm.Module "main", context
 builder = new llvm.IRBuilder context
-### mainfunc = llvm.Function.Create llvm.FunctionType.get(builder.getInt32Ty(), [], false),
-  llvm.Function.LinkageTypes.ExternalLinkage,
-  'main',
-  mod
-mainblock = llvm.BasicBlock.Create context, 'entry', mainfunc
-builder.SetInsertionPoint mainblock ###
-
 currentFunc = null
 variables = {}
 
@@ -34,25 +27,44 @@ compileNode = (node) ->
             currentfunc = func
             compileNode bodyNode for bodyNode in node.RHS.body
             currentfunc = null
-            variables[extractName node] = func
+            variables[extractName node] = new Variable func, "Function"
+          else if node.RHS.type is "String"
+            variables[extractName node] = new Variable (compileNode node.RHS), "String"
           else
             alloca = builder.CreateAlloca getLLVMType node.types
             store = builder.CreateStore (compileNode node.RHS), alloca
-            variables[extractName node] = alloca
+            variables[extractName node] = new Variable alloca, "Regular"
         when "+" then builder.CreateIntCast (builder.CreateAdd (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
         when "-" then builder.CreateIntCast (builder.CreateSub (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
+    when "Index"
+      ep = builder.CreateGEP (compileNode node.value), compileNode node.index
+      builder.CreateLoad (getLLVMType node.types), ep
     when "Number"
       llvm.ConstantInt.get (getLLVMType node.types), node.value, true
     when "Identifier"
-      builder.CreateLoad variables[node.name].getType().getElementType(), variables[node.name]
+      if variables[node.name].type is "Regular"
+        builder.CreateLoad variables[node.name].val.getType().getElementType(), variables[node.name].val
+      else
+        variables[node.name].val
     when "Call"
       if node.callee is "return"
         if node.args.length is 0
           builder.CreateRetVoid()
         else
           builder.CreateRet compileNode node.args[0]
+      else if node.callee is "puts"
+        type = llvm.FunctionType.get builder.getInt32Ty(), [builder.getInt8PtrTy()], false
+        puts = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, "puts", mod
+        builder.CreateCall puts, (compileNode arg for arg in node.args)
       else
         builder.CreateCall variables[node.callee], (compileNode arg for arg in node.args)
+    when "String"
+      builder.CreateGlobalStringPtr node.value
+
+# Arbitrary functions and stuff(TM)
+
+class Variable
+  constructor: (@val, @type) ->
 
 extractName = (node) -> if node.LHS.type is "Binop" then node.LHS.LHS else node.LHS.name
 

@@ -1,5 +1,5 @@
 { IdentifierNode, CallNode, BinopNode, StringLiteralNode,
-  NumberNode, FunctionNode } = require "./nodes"
+  NumberNode, FunctionNode, IndexNode } = require "./nodes"
 { stringToType, FunctionType } = require "./types"
 
 operators = [
@@ -7,6 +7,9 @@ operators = [
   "|=", "^=", "&&", "||", "^^", "<", ">", "<=", ">=", "==", "!=",
   "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~"
 ]
+
+# Global variables, yay!
+lastNode = undefined
 
 parse = (tokens) ->
   N = []
@@ -105,12 +108,19 @@ parseParenExpression = (tokens) ->
   else
     parseExpression tokens[1..], [")"]
 
+parseIndex = (base, tokens) ->
+  [expr, tokens] = parseExpression tokens[1..], ["]"]
+  [(new IndexNode base, expr), tokens[1..]]
+
 parsePrimary = (tokens) ->
+  node = undefined
   switch
-    when tokens[0].type is "Identifier" then parseIdentifierExpression tokens
-    when tokens[0].type is "Number" then parseNumber tokens
-    when tokens[0].type is "String" then parseStringLiteral tokens
-    when tokens[0].value is "(" then parseParenExpression tokens
-    else [null, []]
+    when tokens[0].type is "Identifier" then [node, tokens] = parseIdentifierExpression tokens
+    when tokens[0].type is "Number" then [node, tokens] =  parseNumber tokens
+    when tokens[0].type is "String" then [node, tokens] = parseStringLiteral tokens
+    when tokens[0].value is "(" then [node, tokens] = parseParenExpression tokens
+    else return [null, []]
+  if tokens[0]?.value is "[" then parseIndex node, tokens
+  else [node, tokens]
 
 module.exports = parse
