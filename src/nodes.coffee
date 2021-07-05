@@ -38,6 +38,11 @@ class IndexNode extends Node
     super()
     @type = "Index"
 
+class ArrayNode extends Node
+  constructor: (@items) ->
+    super()
+    @type = "Array"
+
 module.exports = {
   Node,
   BinopNode,
@@ -46,5 +51,6 @@ module.exports = {
   CallNode,
   FunctionNode,
   StringLiteralNode,
-  IndexNode
+  IndexNode,
+  ArrayNode
 }

@@ -1,5 +1,5 @@
 { IdentifierNode, CallNode, BinopNode, StringLiteralNode,
-  NumberNode, FunctionNode, IndexNode } = require "./nodes"
+  NumberNode, FunctionNode, IndexNode, ArrayNode } = require "./nodes"
 { stringToType, FunctionType } = require "./types"
 
 operators = [
@@ -7,9 +7,6 @@ operators = [
   "|=", "^=", "&&", "||", "^^", "<", ">", "<=", ">=", "==", "!=",
   "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~"
 ]
-
-# Global variables, yay!
-lastNode = undefined
 
 parse = (tokens) ->
   N = []
@@ -30,6 +27,9 @@ parseExpression = (tokens, delims = [";"]) ->
       if token.value in ["(", "[", "{"] then level++
       if token.value in [")", "]", "}"] then level--
       hasOperator = hasOperator or (token.value in operators and level is 0)
+
+  hasOperator = false if tokens[0]?.type is "Identifier" and tokens[1]?.value is ":" and not (tokens.filter (e) -> e.value is "=").length
+
   if hasOperator
     for operator in operators
       level = 0; endIndex = 0
@@ -62,7 +62,11 @@ parseIdentifierExpression = (tokens) ->
       args.push E
     [(new CallNode callee, args), tokens[1..]]
   else if tokens[1]?.value is ":"
-    [(new BinopNode ":", tokens[0].value, stringToType tokens[2].value), tokens[3..]]
+    name = tokens[0].value; typeString = ""; index = 2
+    while index < tokens.length
+      typeString += tokens[index].value
+      index++
+    [(new BinopNode ":", name, stringToType typeString), tokens[index..]]
   else
     [(new IdentifierNode tokens[0].value), tokens[1..]]
 
@@ -112,6 +116,16 @@ parseIndex = (base, tokens) ->
   [expr, tokens] = parseExpression tokens[1..], ["]"]
   [(new IndexNode base, expr), tokens[1..]]
 
+parseArray = (tokens) ->
+  tokens = tokens[1..]; items = []
+  loop
+    [E, tokens] = parseExpression tokens, [",", "]"]
+    items.push E
+    if tokens[0].value is "]" then break
+    tokens = tokens[1..]
+  [(new ArrayNode items), tokens[1..]]
+  
+
 parsePrimary = (tokens) ->
   node = undefined
   switch
@@ -119,6 +133,7 @@ parsePrimary = (tokens) ->
     when tokens[0].type is "Number" then [node, tokens] =  parseNumber tokens
     when tokens[0].type is "String" then [node, tokens] = parseStringLiteral tokens
     when tokens[0].value is "(" then [node, tokens] = parseParenExpression tokens
+    when tokens[0].value is "[" then [node, tokens] = parseArray tokens
     else return [null, []]
   if tokens[0]?.value is "[" then parseIndex node, tokens
   else [node, tokens]

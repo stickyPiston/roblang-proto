@@ -21,15 +21,19 @@ finaliseNode = (node) ->
       node.args = finalise node.args
       # console.log node.args
       node.types = deriveType node
+    when "Array"
+      item = finaliseNode item for item in node.items
+      node.types = new PointerType node.items[0].types
     when "Binop"
-      node.LHS = finaliseNode node.LHS
+      node.LHS = finaliseNode node.LHS if node.LHS.operator isnt ":"
       node.RHS = finaliseNode node.RHS
       if node.operator is "="
         if node.LHS.type is "Binop" then writeToScope node.LHS.LHS, node.LHS.RHS
-        else writeToScope node.LHS.name, deriveType node.RHS
+        else writeToScope node.LHS.name, node.RHS.types
         # console.log "Writing #{node.LHS} to ", scope
       node.types = deriveType node
     when "Index"
+      node.value = finaliseNode node.value
       baseType = deriveType node.value
       if baseType.type isnt "Pointer"
         console.error "Dereferencing a non-pointer variable"
@@ -57,17 +61,16 @@ deriveType = (node) ->
         else if node.value >= -9.223372036854776e18 then stringToType "i64"
     when "String" then new PointerType stringToType "u8"
     when "Identifier" then getFromScope node.name
+    when "Array" then new PointerType node.items[0].types
     when "Function"
       if node.types.ret isnt null
         new FunctionType node.types.params, node.types.ret
       else
         returnType = null; index = 0
-        console.log "Determining return type", node.body
         while returnType is null and index < node.body.length
           if node.body[index].type is "Call" and node.body[index].callee is "return"
             returnType = node.body[index].types
             break
-          console.log returnType
           index++
         new FunctionType node.types.params, returnType
     when "Call"

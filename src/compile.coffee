@@ -30,6 +30,11 @@ compileNode = (node) ->
             variables[extractName node] = new Variable func, "Function"
           else if node.RHS.type is "String"
             variables[extractName node] = new Variable (compileNode node.RHS), "String"
+          else if node.RHS.type is "Array"
+            variables[extractName node] = new Variable (compileNode node.RHS), "Array"
+          else if node.RHS.type is "Index"
+            variables[extractName node] = new Variable (compileNode node.RHS), "Index"
+            # console.log variables[extractName node]
           else
             alloca = builder.CreateAlloca getLLVMType node.types
             store = builder.CreateStore (compileNode node.RHS), alloca
@@ -37,8 +42,13 @@ compileNode = (node) ->
         when "+" then builder.CreateIntCast (builder.CreateAdd (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
         when "-" then builder.CreateIntCast (builder.CreateSub (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
     when "Index"
-      ep = builder.CreateGEP (compileNode node.value), compileNode node.index
-      builder.CreateLoad (getLLVMType node.types), ep
+      builder.CreateGEP (compileNode node.value), compileNode node.index
+    when "Array"
+      alloca = builder.CreateAlloca (getLLVMType node.types.base), llvm.ConstantInt.get builder.getInt8Ty(), node.items.length
+      for item, index in node.items
+        ep = builder.CreateGEP alloca, (llvm.ConstantInt.get builder.getInt8Ty(), index)
+        builder.CreateStore (compileNode item), ep
+      alloca
     when "Number"
       llvm.ConstantInt.get (getLLVMType node.types), node.value, true
     when "Identifier"
@@ -51,13 +61,18 @@ compileNode = (node) ->
         if node.args.length is 0
           builder.CreateRetVoid()
         else
-          builder.CreateRet compileNode node.args[0]
+          arg = compileNode node.args[0]
+          builder.CreateRet builder.CreateLoad arg.getType().getElementType(), arg
       else if node.callee is "puts"
         type = llvm.FunctionType.get builder.getInt32Ty(), [builder.getInt8PtrTy()], false
         puts = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, "puts", mod
         builder.CreateCall puts, (compileNode arg for arg in node.args)
       else
-        builder.CreateCall variables[node.callee], (compileNode arg for arg in node.args)
+        args = []
+        for arg in node.args
+          compiledArg = compileNode arg
+          args.push builder.CreateLoad compiledArg.getType().getElementType(), compiledArg
+        builder.CreateCall variables[node.callee], args
     when "String"
       builder.CreateGlobalStringPtr node.value
 
