@@ -18,6 +18,7 @@ compileNode = (node) ->
     when "Binop"
       switch node.operator
         when "="
+          res = undefined
           if node.RHS.type is "Function"
             returnType = getLLVMType node.RHS.types.ret
             type = llvm.FunctionType.get returnType, (node.RHS.types.params.map (t) -> getLLVMType t), false
@@ -27,22 +28,44 @@ compileNode = (node) ->
             currentfunc = func
             compileNode bodyNode for bodyNode in node.RHS.body
             currentfunc = null
-            variables[extractName node] = new Variable func, "Function"
+            res = new Variable func, "Function"
           else if node.RHS.type is "String"
             variables[extractName node] = new Variable (compileNode node.RHS), "String"
           else if node.RHS.type is "Array"
-            variables[extractName node] = new Variable (compileNode node.RHS), "Array"
+            res = new Variable (compileNode node.RHS), "Array"
           else if node.RHS.type is "Index"
-            variables[extractName node] = new Variable (compileNode node.RHS), "Index"
-            # console.log variables[extractName node]
+            res = new Variable (compileNode node.RHS), "Index"
           else
-            alloca = builder.CreateAlloca getLLVMType node.types
-            store = builder.CreateStore (compileNode node.RHS), alloca
-            variables[extractName node] = new Variable alloca, "Regular"
-        when "+" then builder.CreateIntCast (builder.CreateAdd (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
-        when "-" then builder.CreateIntCast (builder.CreateSub (compileNode node.LHS), (compileNode node.RHS)), (getLLVMType node.types), isSigned node.types
+            if (extractName node) of variables
+              builder.CreateStore (compileNode node.RHS), variables[extractName node].val
+              res = variables[extractName node]
+            else
+              alloca = builder.CreateAlloca getLLVMType node.types
+              builder.CreateStore (compileNode node.RHS), alloca
+              res = new Variable alloca, "Regular"
+          if node.LHS.type is "Index"
+            ep = builder.CreateGEP (compileNode node.LHS.value), compileNode node.LHS.index
+            builder.CreateStore (builder.CreateLoad res.val.getType().getElementType(), res.val), ep
+          else
+            variables[extractName node] = res
+        else
+          if node.LHS is null
+          else
+            operands = {LHS: (compileNode node.LHS), RHS: (compileNode node.RHS)}
+            for operand of operands
+              if node[operand].type is "Identifier" or node[operand].type is "Index"
+                operands[operand] = builder.CreateLoad (getLLVMType node[operand].types), operands[operand]
+            switch node.operator
+              when "+"
+                builder.CreateIntCast (builder.CreateAdd operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "-"
+                builder.CreateIntCast (builder.CreateSub operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
     when "Index"
-      builder.CreateGEP (compileNode node.value), compileNode node.index
+      if node.index.type is "Identifier"
+        index = compileNode node.index
+        builder.CreateGEP (compileNode node.value), builder.CreateLoad index.getType().getElementType(), index
+      else
+        builder.CreateGEP (compileNode node.value), compileNode node.index
     when "Array"
       alloca = builder.CreateAlloca (getLLVMType node.types.base), llvm.ConstantInt.get builder.getInt8Ty(), node.items.length
       for item, index in node.items
@@ -53,7 +76,8 @@ compileNode = (node) ->
       llvm.ConstantInt.get (getLLVMType node.types), node.value, true
     when "Identifier"
       if variables[node.name].type is "Regular"
-        builder.CreateLoad variables[node.name].val.getType().getElementType(), variables[node.name].val
+        # builder.CreateLoad variables[node.name].val.getType().getElementType(), variables[node.name].val
+        variables[node.name].val
       else
         variables[node.name].val
     when "Call"

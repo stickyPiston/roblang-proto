@@ -6,8 +6,8 @@ lex = (script) ->
   until script is ""
     if script.match /^[ \r\n]+/
       script = script.replace /^[ \r\n]+/, ""
-    else if script.match /^#.*#/m
-      script = script.replace /^#.*#/m, ""
+    else if script.match /^#.*#/ms
+      script = script.replace /^#.*#/ms, ""
     else if script.match /^[0-9]+/
       script = script.replace /^[0-9]+/, (match) ->
         tokens.push new Token match, "Number"

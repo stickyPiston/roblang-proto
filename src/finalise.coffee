@@ -85,14 +85,15 @@ deriveType = (node) ->
       switch node.operator
         when "+", "-", "*"
           LHStype = node.LHS.types; RHStype = node.RHS.types
-          if LHStype.type is "Basic" and RHStype.type is "Basic"
+          node.LHS.types
+          ###if LHStype.type is "Basic" and RHStype.type is "Basic"
             LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             nextBasicType = (start) ->
               bits = [8, 16, 32, 64, 128]
               Math.min 64, bits[(bits.findIndex (e) -> e is start) + 1]
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             if LHSbits < RHSbits then stringToType signedness + nextBasicType RHSbits
-            else stringToType signedness + nextBasicType LHSbits
+            else stringToType signedness + nextBasicType LHSbits###
         when "/"
           LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
           if LHStype.type is "Basic" and RHStype.type is "Basic"
