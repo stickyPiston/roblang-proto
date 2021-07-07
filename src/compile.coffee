@@ -14,6 +14,7 @@ compile = (nodes) ->
     process.exit 1
 
 compileNode = (node) ->
+  # console.log node
   switch node.type
     when "Binop"
       switch node.operator
@@ -35,6 +36,8 @@ compileNode = (node) ->
             res = new Variable (compileNode node.RHS), "Array"
           else if node.RHS.type is "Index"
             res = new Variable (compileNode node.RHS), "Index"
+          else if node.RHS.type is "Identifier"
+            res = variables[node.RHS.name]
           else
             if (extractName node) of variables
               builder.CreateStore (compileNode node.RHS), variables[extractName node].val
@@ -46,6 +49,11 @@ compileNode = (node) ->
           if node.LHS.type is "Index"
             ep = builder.CreateGEP (compileNode node.LHS.value), compileNode node.LHS.index
             builder.CreateStore (builder.CreateLoad res.val.getType().getElementType(), res.val), ep
+          else if node.LHS.type is "Array"
+            for item, index in node.LHS.items
+              arr = compileNode node.RHS
+              ep = builder.CreateGEP arr, llvm.ConstantInt.get builder.getInt8Ty(), index
+              variables[item.name] = new Variable ep, "Regular"
           else
             variables[extractName node] = res
         else
@@ -86,7 +94,7 @@ compileNode = (node) ->
           builder.CreateRetVoid()
         else
           arg = compileNode node.args[0]
-          builder.CreateRet builder.CreateLoad arg.getType().getElementType(), arg
+          builder.CreateRet loadVar arg, node.args[0].type # builder.CreateLoad arg.getType().getElementType(), arg
       else if node.callee is "puts"
         type = llvm.FunctionType.get builder.getInt32Ty(), [builder.getInt8PtrTy()], false
         puts = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, "puts", mod
@@ -104,6 +112,10 @@ compileNode = (node) ->
 
 class Variable
   constructor: (@val, @type) ->
+
+loadVar = (v, type) ->
+  if type is "Binop" then v
+  else builder.CreateLoad v.getType().getElementType(), v
 
 extractName = (node) -> if node.LHS.type is "Binop" then node.LHS.LHS else node.LHS.name
 

@@ -29,6 +29,8 @@ finaliseNode = (node) ->
       node.RHS = finaliseNode node.RHS
       if node.operator is "="
         if node.LHS.type is "Binop" then writeToScope node.LHS.LHS, node.LHS.RHS
+        else if node.LHS.type is "Array"
+          writeToScope item.name, node.RHS.types.base for item in node.LHS.items
         else writeToScope node.LHS.name, node.RHS.types
         # console.log "Writing #{node.LHS} to ", scope
       node.types = deriveType node

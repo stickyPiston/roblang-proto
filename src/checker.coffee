@@ -31,6 +31,8 @@ checkNode = (node) ->
           console.error "Type mismatch, cannot assign #{node.RHS.types.name} to #{node.LHS.RHS.name} in assignment"
           process.exit 1
         else writeToScope node.LHS.LHS, node.LHS.RHS
+      else if node.LHS.type is "Array"
+        writeToScope item.name, node.RHS.types.base for item in node.LHS.items
       else writeToScope node.LHS.name, node.RHS.types
     else
       check [node.LHS, node.RHS]
