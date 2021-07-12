@@ -9,6 +9,7 @@ variables = {}
 compile = (nodes) ->
   compileNode node for node in nodes
   unless llvm.verifyModule(mod)
+    mod.print()
     llvm.WriteBitcodeToFile mod, "out.bc"
   else
     process.exit 1
@@ -60,6 +61,7 @@ compileNode = (node) ->
               ep = builder.CreateGEP arr, llvm.ConstantInt.get builder.getInt8Ty(), index
               variables[item.name] = new Variable ep, "Regular"
           else
+            res.val = builder.CreatePointerCast res.val, getLLVMType node.LHS.RHS if node.RHS.types.base?.name is "any"
             variables[extractName node] = res
         when ":"
           returnType = getLLVMType node.RHS.ret
@@ -94,7 +96,6 @@ compileNode = (node) ->
       llvm.ConstantInt.get (getLLVMType node.types), node.value, true
     when "Identifier"
       if variables[node.name].type is "Regular"
-        # builder.CreateLoad variables[node.name].val.getType().getElementType(), variables[node.name].val
         variables[node.name].val
       else
         variables[node.name].val
@@ -104,7 +105,7 @@ compileNode = (node) ->
           builder.CreateRetVoid()
         else
           arg = compileNode node.args[0]
-          builder.CreateRet loadVar arg, node.args[0] # builder.CreateLoad arg.getType().getElementType(), arg
+          builder.CreateRet arg
       else
         args = []
         for arg in node.args
@@ -130,7 +131,7 @@ BasicTypeMap =
   u16: builder.getInt16Ty(), i16: builder.getInt16Ty(),
   u32: builder.getInt32Ty(), i32: builder.getInt32Ty(),
   u64: builder.getInt64Ty(), i64: builder.getInt64Ty(),
-  "void": builder.getVoidTy()
+  "void": builder.getVoidTy(), any: builder.getInt8Ty()
 getLLVMType = (t) ->
   if t.type is "Basic" then BasicTypeMap[t.name]
   else if t.type is "Pointer"

@@ -24,7 +24,7 @@ runCli = ->
 runScript = (script) ->
   tokens = lex script
   nodes = finalise parse tokens
-  # console.log nodes
+  # console.log nodes[2].RHS.body[1]
   check nodes
   compile nodes
 

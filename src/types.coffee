@@ -4,33 +4,6 @@ class Type
 class BasicType extends Type
   constructor: (@name) -> super "Basic"
 
-class RoblangU8 extends BasicType
-  constructor: -> super "u8"
-
-class RoblangI8 extends BasicType
-  constructor: -> super "i8"
-
-class RoblangU16 extends BasicType
-  constructor: -> super "u16"
-
-class RoblangI16 extends BasicType
-  constructor: -> super "i16"
-
-class RoblangU32 extends BasicType
-  constructor: -> super "u32"
-
-class RoblangI32 extends BasicType
-  constructor: -> super "i32"
-
-class RoblangU64 extends BasicType
-  constructor: -> super "u64"
-
-class RoblangI64 extends BasicType
-  constructor: -> super "i64"
-
-class RoblangVoid extends BasicType
-  constructor: -> super "void"
-
 class FunctionType extends Type
   constructor: (@params, @ret) -> super "Function"
 
@@ -41,8 +14,8 @@ stringToType = (str) ->
   type = null
   until str is ""
     # console.log str
-    if str.match /^(i8|u8|i16|u16|u32|i32|u64|i64|void)/
-      str = str.replace /^(i8|u8|i16|u16|u32|i32|u64|i64|void)/, (m) ->
+    if str.match /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any)/
+      str = str.replace /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any)/, (m) ->
         type = new BasicType m
         ""
     if str.match /^\*/

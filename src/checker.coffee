@@ -52,6 +52,7 @@ canAssignTo = (type_a, type_b) ->
     else if a is "i32" and b in ["i8", "u8", "i16", "u16"] then return true
     else if a is "i64" and b in ["i8", "u8", "i16", "u16", "u32", "i32"] then return true
     else if a is b then return true
+    else if a is "any" or b is "any" then return true
     return false
   else if type_b is "Function"
     return canAssignTo type_a, type_b.ret
