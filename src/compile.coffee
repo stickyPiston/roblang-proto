@@ -32,7 +32,7 @@ compileNode = (node) ->
             currentfunc = null
             res = new Variable func, "Function"
           else if node.RHS.type is "String"
-            variables[extractName node] = new Variable (compileNode node.RHS), "String"
+            res = new Variable (compileNode node.RHS), "String"
           else if node.RHS.type is "Array"
             res = new Variable (compileNode node.RHS), "Array"
           else if node.RHS.type is "Index"
@@ -53,7 +53,7 @@ compileNode = (node) ->
               builder.CreateStore (compileNode node.RHS), alloca
               res = new Variable alloca, "Regular"
           if node.LHS.type is "Index"
-            ep = builder.CreateGEP (compileNode node.LHS.value), compileNode node.LHS.index
+            ep = builder.CreateGEP (compileNode node.LHS.value), loadVar (compileNode node.LHS.index), node.LHS.index
             builder.CreateStore (builder.CreateLoad res.val.getType().getElementType(), res.val), ep
           else if node.LHS.type is "Array"
             for item, index in node.LHS.items
@@ -83,6 +83,7 @@ compileNode = (node) ->
     when "Index"
       if node.index.type is "Identifier"
         index = compileNode node.index
+        console.log node, index
         builder.CreateGEP (compileNode node.value), builder.CreateLoad index.getType().getElementType(), index
       else
         builder.CreateGEP (compileNode node.value), compileNode node.index

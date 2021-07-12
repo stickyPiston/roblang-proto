@@ -38,7 +38,7 @@ parseExpression = (tokens, delims = [";"]) ->
     for token in tokens
       if token.value in ["(", "[", "{"] then level++
       if token.value in [")", "]", "}"] then level--
-      hasOperator = hasOperator or (token.value in operators and level is 0)
+      hasOperator = hasOperator or (token.value in operators and level is 0 and token.type is "Operator")
 
   hasOperator = false if tokens[0]?.type is "Identifier" and tokens[1]?.value is ":" and not (tokens.filter (e) -> e.value is "=").length
 
@@ -110,15 +110,14 @@ parseParenExpression = (tokens) ->
       returnType = stringToType tokens[++paramIndex].value
       paramIndex += 3
     else paramIndex += 2 # skip to opening {
-    # console.log paramIndex, tokens, tokens[paramIndex]
     body = []
-    index = paramIndex
-    until tokens[index].value is "}"
-      [E, _] = parseExpression tokens[index..]
-      body.push E
-      index++ until tokens[index].value is ";"
-      index++
-    node = new FunctionNode (params.filter Boolean), body
+    index = paramIndex; level = 0
+    until tokens[index].value is "}" and level is 0
+      if tokens[index].value in ["{", "[", "("] then level++
+      else if tokens[index].value in ["}", "]", ")"] then level--
+      body.push tokens[index++]
+    nodes = parse body
+    node = new FunctionNode (params.filter Boolean), nodes
     node.types = new FunctionType paramTypes, returnType
     [node, tokens[index+1..]]
   else
