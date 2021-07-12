@@ -1,12 +1,10 @@
 { PointerType, FunctionType, stringToType } = require "./types"
 
-scope = {
-  puts: new FunctionType [new PointerType stringToType "u8"], stringToType "i32"
-}; currentScope = ""; currentFunc = null
+scope = {}; currentScope = ""; currentFunc = null
 finalise = (nodes) -> finaliseNode node for node in nodes
 
 finaliseNode = (node) ->
-  # console.log "Finalising", node
+  # console.log "Finalising", node, scope
   switch node.type
     when "String", "Identifier", "Number"
       node.types = deriveType node
@@ -25,8 +23,11 @@ finaliseNode = (node) ->
       item = finaliseNode item for item in node.items
       node.types = new PointerType node.items[0].types
     when "Binop"
-      node.LHS = finaliseNode node.LHS if node.LHS.operator isnt ":"
-      node.RHS = finaliseNode node.RHS
+      if node.operator is ":"
+        writeToScope node.LHS, node.RHS
+      else
+        node.LHS = finaliseNode node.LHS
+        node.RHS = finaliseNode node.RHS
       if node.operator is "="
         if node.LHS.type is "Binop" then writeToScope node.LHS.LHS, node.LHS.RHS
         else if node.LHS.type is "Array"
@@ -80,7 +81,6 @@ deriveType = (node) ->
         if node.args.length is 0 then stringToType "void"
         else node.args[0].types
       else
-        # console.log node.callee, scope
         (getFromScope node.callee).ret
     when "Index" then node.types.base
     when "Binop"
@@ -102,10 +102,9 @@ deriveType = (node) ->
             LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             stringToType signedness + Math.max LHSbits, RHSbits
-        when "="
-          deriveType node.RHS
-        when "<", ">"
-          stringToType "u8"
+        when "=" then deriveType node.RHS
+        when "<", ">" then stringToType "u8"
+        when ":" then node.RHS
 
 # @type {(name: string) => Type}
 getFromScope = (name) ->

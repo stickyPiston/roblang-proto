@@ -34,11 +34,12 @@ checkNode = (node) ->
       else if node.LHS.type is "Array"
         writeToScope item.name, node.RHS.types.base for item in node.LHS.items
       else writeToScope node.LHS.name, node.RHS.types
-    else
+    else if node.operator isnt ":"
       check [node.LHS, node.RHS]
       unless ((isNumber node.LHS.types) and (isNumber node.RHS.types)) # not canAssignTo node.LHS.types, node.RHS.types
         console.error "No available operator #{node.LHS.types.name} #{node.operator} #{node.RHS.types.name}"
         process.exit 1
+    else writeToScope node.LHS, node.types
   else if node.type is "Function" then check node.body
 
 canAssignTo = (type_a, type_b) ->

@@ -9,12 +9,24 @@ operators = [
 ]
 
 parse = (tokens) ->
+  expressions = [[]]; level = 0; exprIndex = 0; index = 0
+  until tokens[index] is undefined or -1 is tokens.findIndex (i) -> i.value is ";"
+    if tokens[index].value in ["[", "(", "{"] then level++
+    if tokens[index].value in ["]", ")", "}"] then level--
+    expressions[exprIndex].push tokens[index++]
+    if tokens[index].value is ";" and level is 0
+      exprIndex = -1 + expressions.push []
+      index++
+      continue
+  expressions = expressions.filter (e) -> e.length
   N = []
-  loop
+  ### loop
     [E, tokens] = parseExpression tokens
     tokens = tokens[1..]
     N.push E if E
-    if tokens?.length is 0 or tokens is undefined then break
+    if tokens?.length is 0 or tokens is undefined then break ###
+  for expression in expressions
+    N.push (parseExpression expression)[0]
   N
 
 parseExpression = (tokens, delims = [";"]) ->
@@ -63,7 +75,7 @@ parseIdentifierExpression = (tokens) ->
     [(new CallNode callee, args), tokens[1..]]
   else if tokens[1]?.value is ":"
     name = tokens[0].value; typeString = ""; index = 2
-    while index < tokens.length
+    while index < tokens.length and tokens[index]?.value isnt ";"
       typeString += tokens[index].value
       index++
     [(new BinopNode ":", name, stringToType typeString), tokens[index..]]
@@ -124,6 +136,8 @@ parseArray = (tokens) ->
     if tokens[0].value is "]" then break
     tokens = tokens[1..]
   [(new ArrayNode items), tokens[1..]]
+
+parseChar = (tokens) -> [(new NumberNode tokens[0].value.charCodeAt 0), tokens[1..]]
   
 
 parsePrimary = (tokens) ->
@@ -134,6 +148,7 @@ parsePrimary = (tokens) ->
     when tokens[0].type is "String" then [node, tokens] = parseStringLiteral tokens
     when tokens[0].value is "(" then [node, tokens] = parseParenExpression tokens
     when tokens[0].value is "[" then [node, tokens] = parseArray tokens
+    when tokens[0].type is "Char" then [node, tokens] = parseChar tokens
     else return [null, []]
   if tokens[0]?.value is "[" then parseIndex node, tokens
   else [node, tokens]

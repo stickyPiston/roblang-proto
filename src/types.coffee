@@ -40,13 +40,18 @@ class PointerType extends Type
 stringToType = (str) ->
   type = null
   until str is ""
-    if str.match /^i8|u8|i16|u16|u32|i32|u64|i64|void/
-      str = str.replace /^i8|u8|i16|u16|u32|i32|u64|i64|void/, (m) ->
+    # console.log str
+    if str.match /^(i8|u8|i16|u16|u32|i32|u64|i64|void)/
+      str = str.replace /^(i8|u8|i16|u16|u32|i32|u64|i64|void)/, (m) ->
         type = new BasicType m
         ""
     if str.match /^\*/
       str = str.replace /^\*/, (m) ->
         type = new PointerType type
+        ""
+    if str.match /^\(.*\)->.*/
+      str = str.replace /\((.*)\)->(.*)/gm, (m, params, ret) ->
+        type = new FunctionType (stringToType p.trim() for p in params.split ","), stringToType ret
         ""
   type
 

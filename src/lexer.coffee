@@ -32,9 +32,13 @@ lex = (script) ->
       script = script.replace /^[;,:]/, (match) ->
         tokens.push new Token match, "Separator"
         ""
-    else if script.match /^".*"/m
-      script = script.replace /^"(.*)"/m, (match, value) ->
+    else if script.match /^".*?"/m
+      script = script.replace /^"(.*?)"/m, (match, value) ->
         tokens.push new Token value, "String"
+        ""
+    else if script.match /^'.*?'/
+      script = script.replace /^'(.*?)'/, (match, c) ->
+        tokens.push new Token c, "Char"
         ""
     else
       console.error "Unrecognised token", script

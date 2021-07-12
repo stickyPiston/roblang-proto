@@ -38,6 +38,11 @@ compileNode = (node) ->
             res = new Variable (compileNode node.RHS), "Index"
           else if node.RHS.type is "Identifier"
             res = variables[node.RHS.name]
+          else if node.RHS.type is "Call"
+            if node.RHS.types.type is "Pointer"
+              res = new Variable (compileNode node.RHS), "Call"
+            else
+              res = new Variable (builder.CreateLoad (getLLVMType node.RHS.types), compileNode node.RHS), "Call"
           else
             if (extractName node) of variables
               builder.CreateStore (compileNode node.RHS), variables[extractName node].val
@@ -56,6 +61,11 @@ compileNode = (node) ->
               variables[item.name] = new Variable ep, "Regular"
           else
             variables[extractName node] = res
+        when ":"
+          returnType = getLLVMType node.RHS.ret
+          type = llvm.FunctionType.get returnType, (node.RHS.params.map (t) -> getLLVMType t), false
+          func = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, node.LHS, mod
+          variables[node.LHS] = new Variable func, "Function"
         else
           if node.LHS is null
           else
@@ -94,17 +104,13 @@ compileNode = (node) ->
           builder.CreateRetVoid()
         else
           arg = compileNode node.args[0]
-          builder.CreateRet loadVar arg, node.args[0].type # builder.CreateLoad arg.getType().getElementType(), arg
-      else if node.callee is "puts"
-        type = llvm.FunctionType.get builder.getInt32Ty(), [builder.getInt8PtrTy()], false
-        puts = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, "puts", mod
-        builder.CreateCall puts, (compileNode arg for arg in node.args)
+          builder.CreateRet loadVar arg, node.args[0] # builder.CreateLoad arg.getType().getElementType(), arg
       else
         args = []
         for arg in node.args
-          compiledArg = compileNode arg
-          args.push builder.CreateLoad compiledArg.getType().getElementType(), compiledArg
-        builder.CreateCall variables[node.callee], args
+          compiledArg = loadVar (compileNode arg), arg.type
+          args.push compiledArg
+        builder.CreateCall variables[node.callee].val, args
     when "String"
       builder.CreateGlobalStringPtr node.value
 
@@ -114,8 +120,8 @@ class Variable
   constructor: (@val, @type) ->
 
 loadVar = (v, type) ->
-  if type is "Binop" then v
-  else builder.CreateLoad v.getType().getElementType(), v
+  if type.type is "Identifier" and type.types.type isnt "pointer" then builder.CreateLoad v.getType().getElementType(), v
+  else v
 
 extractName = (node) -> if node.LHS.type is "Binop" then node.LHS.LHS else node.LHS.name
 
@@ -127,6 +133,8 @@ BasicTypeMap =
   "void": builder.getVoidTy()
 getLLVMType = (t) ->
   if t.type is "Basic" then BasicTypeMap[t.name]
+  else if t.type is "Pointer"
+    llvm.PointerType.getUnqual getLLVMType t.base #BasicTypeMap[t.base.name]
 
 isSigned = (t) -> t.type is "Basic" and t.name[0] is "i"
 
