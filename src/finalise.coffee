@@ -4,7 +4,7 @@ scope = {}; currentScope = ""; currentFunc = null
 finalise = (nodes) -> finaliseNode node for node in nodes
 
 finaliseNode = (node) ->
-  # console.log "Finalising", node, scope
+  # console.log "Finalising", node #, scope
   switch node.type
     when "String", "Identifier", "Number"
       node.types = deriveType node

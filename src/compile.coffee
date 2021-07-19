@@ -15,7 +15,6 @@ compile = (nodes) ->
     process.exit 1
 
 compileNode = (node) ->
-  # console.log node
   switch node.type
     when "Binop"
       switch node.operator
@@ -27,6 +26,8 @@ compileNode = (node) ->
             func = llvm.Function.Create type, llvm.Function.LinkageTypes.ExternalLinkage, (extractName node), mod
             block = llvm.BasicBlock.Create context, '', func
             builder.SetInsertionPoint block
+            for param, index in node.RHS.params
+              variables[param] = new Variable (func.getArg index), "Parameter"
             currentfunc = func
             compileNode bodyNode for bodyNode in node.RHS.body
             currentfunc = null
@@ -83,7 +84,6 @@ compileNode = (node) ->
     when "Index"
       if node.index.type is "Identifier"
         index = compileNode node.index
-        console.log node, index
         builder.CreateGEP (compileNode node.value), builder.CreateLoad index.getType().getElementType(), index
       else
         builder.CreateGEP (compileNode node.value), compileNode node.index

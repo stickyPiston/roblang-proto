@@ -19,28 +19,23 @@ parse = (tokens) ->
       index++
       continue
   expressions = expressions.filter (e) -> e.length
-  N = []
-  ### loop
-    [E, tokens] = parseExpression tokens
-    tokens = tokens[1..]
-    N.push E if E
-    if tokens?.length is 0 or tokens is undefined then break ###
-  for expression in expressions
-    N.push (parseExpression expression)[0]
-  N
+  (parseExpression expression)[0] for expression in expressions
 
 parseExpression = (tokens, delims = [";"]) ->
   hasOperator = false
   if tokens.length is 0
     return [null, []]
   else if tokens.length isnt 1
-    level = 0
-    for token in tokens
+    level = 0; inType = false
+    for token, index in tokens
       if token.value in ["(", "[", "{"] then level++
       if token.value in [")", "]", "}"] then level--
-      hasOperator = hasOperator or (token.value in operators and level is 0 and token.type is "Operator")
-
-  hasOperator = false if tokens[0]?.type is "Identifier" and tokens[1]?.value is ":" and not (tokens.filter (e) -> e.value is "=").length
+      if token.value is ":" then inType = true
+      if token.value is "->" and tokens[index - 1].value isnt ")" then inType = false
+      if (token.value in operators and level is 0 and token.type is "Operator") and not inType
+        hasOperator = true
+      else if token.value in operators and level is 0
+        inType = false
 
   if hasOperator
     for operator in operators
@@ -75,7 +70,8 @@ parseIdentifierExpression = (tokens) ->
     [(new CallNode callee, args), tokens[1..]]
   else if tokens[1]?.value is ":"
     name = tokens[0].value; typeString = ""; index = 2
-    while index < tokens.length and tokens[index]?.value isnt ";"
+    while index < tokens.length
+      # if tokens[index + 1]?.value isnt "->" and tokens[index].value in [";", ",", ")"] then break
       typeString += tokens[index].value
       index++
     [(new BinopNode ":", name, stringToType typeString), tokens[index..]]
@@ -96,7 +92,7 @@ parseParenExpression = (tokens) ->
   if tokens[index+1]?.value is "->" or tokens[index+1]?.value is ":"
     params = []; paramIndex = 1; paramTypes = []
     loop
-      [E, _] = parseExpression tokens[paramIndex..index], [")", ","]
+      [E, _] = parseExpression tokens[paramIndex..index-1], [")", ","]
       if E isnt null
         if E.type is "Binop"
           params.push E.LHS
@@ -107,8 +103,11 @@ parseParenExpression = (tokens) ->
       else paramIndex++
     returnType = null
     if tokens[++paramIndex].value is ":"
-      returnType = stringToType tokens[++paramIndex].value
-      paramIndex += 3
+      paramIndex++
+      returnTypeString = ""
+      returnTypeString += tokens[paramIndex++].value until tokens[paramIndex].value is "->"
+      returnType = stringToType returnTypeString
+      paramIndex += 2
     else paramIndex += 2 # skip to opening {
     body = []
     index = paramIndex; level = 0
