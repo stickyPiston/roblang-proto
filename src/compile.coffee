@@ -81,12 +81,48 @@ compileNode = (node) ->
                 builder.CreateIntCast (builder.CreateAdd operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
               when "-"
                 builder.CreateIntCast (builder.CreateSub operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "*"
+                builder.CreateIntCast (builder.CreateMul operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "/"
+                if isSigned node.types then builder.CreateIntCast (builder.CreateSDiv operands.LHS, operands.RHS), (getLLVMType node.types), true
+                else builder.CreateIntCast (builder.CreateUDiv operands.LHS, operands.RHS), (getLLVMType node.types), false
+              when "<<"
+                builder.CreateIntCast (builder.CreateShl operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when ">>"
+                builder.CreateIntCast (builder.CreateLShr operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "<"
+                if isSigned node.types then builder.CreateIntCast (builder.CreateICmpSLT operands.LHS, operands.RHS), (getLLVMType node.types), true
+                else builder.CreateIntCast (builder.CreateICmpULT operands.LHS, operands.RHS), (getLLVMType node.types), false
+              when ">"
+                if isSigned node.types then builder.CreateIntCast (builder.CreateICmpSGT operands.LHS, operands.RHS), (getLLVMType node.types), true
+                else builder.CreateIntCast (builder.CreateICmpUGT operands.LHS, operands.RHS), (getLLVMType node.types), false
+              when "=="
+                builder.CreateIntCast (builder.CreateICmpEQ operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "!="
+                builder.CreateIntCast (builder.CreateICmpNE operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when ">="
+                if isSigned node.types then builder.CreateIntCast (builder.CreateICmpSGE operands.LHS, operands.RHS), (getLLVMType node.types), true
+                else builder.CreateIntCast (builder.CreateICmpUGE operands.LHS, operands.RHS), (getLLVMType node.types), false
+              when "<="
+                if isSigned node.types then builder.CreateIntCast (builder.CreateICmpSLE operands.LHS, operands.RHS), (getLLVMType node.types), true
+                else builder.CreateIntCast (builder.CreateICmpULE operands.LHS, operands.RHS), (getLLVMType node.types), false
+              when "&&", "||"
+                lhscmp = builder.CreateICmpNE operands.LHS, llvm.ConstantInt.get (getLLVMType node.LHS.types), 0
+                rhscmp = builder.CreateICmpNE operands.RHS, llvm.ConstantInt.get (getLLVMType node.RHS.types), 0
+                if node.operator is "||" then builder.CreateIntCast (builder.CreateOr lhscmp, rhscmp), (getLLVMType node.types), isSigned node.types
+                else builder.CreateIntCast (builder.CreateAnd lhscmp, rhscmp), (getLLVMType node.types), isSigned node.types
+              when "&"
+                builder.CreateIntCast (builder.CreateAnd operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "|"
+                builder.CreateIntCast (builder.CreateOr operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
+              when "^"
+                builder.CreateIntCast (builder.CreateXor operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
     when "Index"
       if node.index.type is "Identifier"
         index = compileNode node.index
-        builder.CreateGEP (compileNode node.value), builder.CreateLoad index.getType().getElementType(), index
+        builder.CreateGEP (compileNode node.value), builder.CreateIntCast (builder.CreateLoad index.getType().getElementType(), index), builder.getInt8Ty(), false
       else
-        builder.CreateGEP (compileNode node.value), compileNode node.index
+        builder.CreateGEP (compileNode node.value), builder.CreateIntCast (compileNode node.index), builder.getInt8Ty(), false
     when "Array"
       alloca = builder.CreateAlloca (getLLVMType node.types.base), llvm.ConstantInt.get builder.getInt8Ty(), node.items.length
       for item, index in node.items
@@ -110,7 +146,7 @@ compileNode = (node) ->
       else
         args = []
         for arg in node.args
-          compiledArg = loadVar (compileNode arg), arg.type
+          compiledArg = loadVar (compileNode arg), arg
           args.push compiledArg
         builder.CreateCall variables[node.callee].val, args
     when "String"
@@ -122,7 +158,7 @@ class Variable
   constructor: (@val, @type) ->
 
 loadVar = (v, type) ->
-  if type.type is "Identifier" and type.types.type isnt "pointer" then builder.CreateLoad v.getType().getElementType(), v
+  if (type.type is "Identifier" and type.types.type isnt "pointer") or type.type is "Index" then builder.CreateLoad v.getType().getElementType(), v
   else v
 
 extractName = (node) -> if node.LHS.type is "Binop" then node.LHS.LHS else node.LHS.name
@@ -133,6 +169,7 @@ BasicTypeMap =
   u32: builder.getInt32Ty(), i32: builder.getInt32Ty(),
   u64: builder.getInt64Ty(), i64: builder.getInt64Ty(),
   "void": builder.getVoidTy(), any: builder.getInt8Ty()
+  bool: builder.getInt1Ty()
 getLLVMType = (t) ->
   if t.type is "Basic" then BasicTypeMap[t.name]
   else if t.type is "Pointer"

@@ -13,9 +13,8 @@ class PointerType extends Type
 stringToType = (str) ->
   type = null
   until str is ""
-    # console.log str
-    if str.match /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any)/
-      str = str.replace /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any)/, (m) ->
+    if str.match /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any|bool)/
+      str = str.replace /^(i8|u8|i16|u16|u32|i32|u64|i64|void|any|bool)/, (m) ->
         type = new BasicType m
         ""
     if str.match /^\*/

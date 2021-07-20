@@ -129,7 +129,10 @@ parseIndex = (base, tokens) ->
 parseArray = (tokens) ->
   tokens = tokens[1..]; items = []
   loop
-    [E, tokens] = parseExpression tokens, [",", "]"]
+    index = tokens.findIndex (e) -> e.value is "," or e.value is "]"
+    t = tokens[..index-1]
+    [E, _] = parseExpression t
+    tokens = tokens[index..]
     items.push E
     if tokens[0].value is "]" then break
     tokens = tokens[1..]

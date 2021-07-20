@@ -45,12 +45,14 @@ checkNode = (node) ->
 canAssignTo = (type_a, type_b) ->
   if type_a.type is "Basic" and type_b.type is "Basic"
     a = type_a.name; b = type_b.name
-    if a is "u16" and b is "u8" then return true
-    else if a is "u32" and b in ["u8", "u16"] then return true
-    else if a is "u64" and b in ["u8", "u16", "u32"] then return true
-    else if a is "i16" and b in ["i8", "u8"] then return true
-    else if a is "i32" and b in ["i8", "u8", "i16", "u16"] then return true
-    else if a is "i64" and b in ["i8", "u8", "i16", "u16", "u32", "i32"] then return true
+    if a is "u8" and b is "bool" then return true
+    else if a is "u16" and b in ["bool", "u8"] then return true
+    else if a is "u32" and b in ["bool", "u8", "u16"] then return true
+    else if a is "u64" and b in ["bool", "u8", "u16", "u32"] then return true
+    else if a is "i8" and b is "bool" then return true
+    else if a is "i16" and b in ["bool", "i8", "u8"] then return true
+    else if a is "i32" and b in ["bool", "i8", "u8", "i16", "u16"] then return true
+    else if a is "i64" and b in ["bool", "i8", "u8", "i16", "u16", "u32", "i32"] then return true
     else if a is b then return true
     else if a is "any" or b is "any" then return true
     return false

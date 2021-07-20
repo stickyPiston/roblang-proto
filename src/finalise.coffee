@@ -4,7 +4,6 @@ scope = {}; currentScope = ""; currentFunc = null
 finalise = (nodes) -> finaliseNode node for node in nodes
 
 finaliseNode = (node) ->
-  # console.log "Finalising", node #, scope
   switch node.type
     when "String", "Identifier", "Number"
       node.types = deriveType node
@@ -14,10 +13,8 @@ finaliseNode = (node) ->
       node.body = finalise node.body
       node.types = deriveType node
       currentFunc = null
-      # console.log node
     when "Call"
       node.args = finalise node.args
-      # console.log node.args
       node.types = deriveType node
     when "Array"
       item = finaliseNode item for item in node.items
@@ -33,7 +30,6 @@ finaliseNode = (node) ->
         else if node.LHS.type is "Array"
           writeToScope item.name, node.RHS.types.base for item in node.LHS.items
         else writeToScope node.LHS.name, node.RHS.types
-        # console.log "Writing #{node.LHS} to ", scope
       node.types = deriveType node
     when "Index"
       node.value = finaliseNode node.value
@@ -85,17 +81,9 @@ deriveType = (node) ->
     when "Index" then node.types.base
     when "Binop"
       switch node.operator
-        when "+", "-", "*"
+        when "+", "-", "*", "<<", ">>", "|", "&", "^"
           LHStype = node.LHS.types; RHStype = node.RHS.types
           node.LHS.types
-          ###if LHStype.type is "Basic" and RHStype.type is "Basic"
-            LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
-            nextBasicType = (start) ->
-              bits = [8, 16, 32, 64, 128]
-              Math.min 64, bits[(bits.findIndex (e) -> e is start) + 1]
-            signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
-            if LHSbits < RHSbits then stringToType signedness + nextBasicType RHSbits
-            else stringToType signedness + nextBasicType LHSbits###
         when "/"
           LHStype = deriveType node.LHS; RHStype = deriveType node.RHS
           if LHStype.type is "Basic" and RHStype.type is "Basic"
@@ -103,7 +91,7 @@ deriveType = (node) ->
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             stringToType signedness + Math.max LHSbits, RHSbits
         when "=" then deriveType node.RHS
-        when "<", ">" then stringToType "u8"
+        when "<", ">", "<=", ">=", "==", "!=", "&&", "||" then stringToType "bool"
         when ":" then node.RHS
 
 # @type {(name: string) => Type}
