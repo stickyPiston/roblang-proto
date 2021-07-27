@@ -71,7 +71,6 @@ parseIdentifierExpression = (tokens) ->
   else if tokens[1]?.value is ":"
     name = tokens[0].value; typeString = ""; index = 2
     while index < tokens.length
-      # if tokens[index + 1]?.value isnt "->" and tokens[index].value in [";", ",", ")"] then break
       typeString += tokens[index].value
       index++
     [(new BinopNode ":", name, stringToType typeString), tokens[index..]]

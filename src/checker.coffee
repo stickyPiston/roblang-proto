@@ -1,15 +1,15 @@
 { PointerType, FunctionType, stringToType } = require "./types"
-scope = {
-  putd: new FunctionType [stringToType "i64"], stringToType "i32"
-  puts: new FunctionType [new PointerType stringToType "u8"], stringToType "i32"
-}; currentScope = ""
+Scope = require "./scope"
+scope = new Scope
+
 check = (nodes) -> checkNode node for node in nodes
 checkNode = (node) ->
+  console.log node, scope
   if node.type is "Call"
     # Check if params match up
-    func = getFromScope node.callee
+    func = scope.recallVariable node.callee
     if node.callee is "return"
-      # In the future: check compliance with function return type
+      # TODO: In the future: check compliance with function return type
       if node.args.length > 1
         console.error "Wrong number of arguments to return call"
         process.exit 1
@@ -30,17 +30,20 @@ checkNode = (node) ->
         unless canAssignTo node.LHS.RHS, node.RHS.types
           console.error "Type mismatch, cannot assign #{node.RHS.types.name} to #{node.LHS.RHS.name} in assignment"
           process.exit 1
-        else writeToScope node.LHS.LHS, node.LHS.RHS
+        else scope.saveVariable node.LHS.LHS, node.LHS.RHS
       else if node.LHS.type is "Array"
-        writeToScope item.name, node.RHS.types.base for item in node.LHS.items
-      else writeToScope node.LHS.name, node.RHS.types
+        scope.saveVariable item.name, node.RHS.types.base for item in node.LHS.items
+      else scope.saveVariable node.LHS.name, node.RHS.types
     else if node.operator isnt ":"
       check [node.LHS, node.RHS]
-      unless ((isNumber node.LHS.types) and (isNumber node.RHS.types)) # not canAssignTo node.LHS.types, node.RHS.types
+      unless ((isNumber node.LHS.types) and (isNumber node.RHS.types))
         console.error "No available operator #{node.LHS.types.name} #{node.operator} #{node.RHS.types.name}"
         process.exit 1
-    else writeToScope node.LHS, node.types
-  else if node.type is "Function" then check node.body
+    else scope.saveVariable node.LHS, node.types
+  else if node.type is "Function"
+    scope.changeScope()
+    check node.body
+    scope.revertChanges()
 
 canAssignTo = (type_a, type_b) ->
   if type_a.type is "Basic" and type_b.type is "Basic"
@@ -62,14 +65,5 @@ canAssignTo = (type_a, type_b) ->
     return canAssignTo type_a.base, type_b.base
 
 isNumber = (type) -> type.type is "Basic"
-
-# @type {(name: string) => Type}
-getFromScope = (name) ->
-  if currentScope is "" then scope[name]
-  else scope[currentScope][name] # For now assuming that function won't be put in functions
-
-writeToScope = (name, value) ->
-  if currentScope is "" then scope[name] = value
-  else scope[currentScope][name] = value
 
 module.exports = check

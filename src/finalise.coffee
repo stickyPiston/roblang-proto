@@ -1,6 +1,7 @@
 { PointerType, FunctionType, stringToType } = require "./types"
+Scope = require "./scope"
+scope = new Scope
 
-scope = {}; currentScope = ""; currentFunc = null
 finalise = (nodes) -> finaliseNode node for node in nodes
 
 finaliseNode = (node) ->
@@ -8,11 +9,11 @@ finaliseNode = (node) ->
     when "String", "Identifier", "Number"
       node.types = deriveType node
     when "Function"
-      writeToScope param, node.types.params[index] for param, index in node.params
-      currentFunc = node.types
+      scope.changeScope()
+      scope.saveVariable param, node.types.params[index] for param, index in node.params
       node.body = finalise node.body
       node.types = deriveType node
-      currentFunc = null
+      scope.revertChanges()
     when "Call"
       node.args = finalise node.args
       node.types = deriveType node
@@ -21,15 +22,15 @@ finaliseNode = (node) ->
       node.types = new PointerType node.items[0].types
     when "Binop"
       if node.operator is ":"
-        writeToScope node.LHS, node.RHS
+        scope.saveVariable node.LHS, node.RHS
       else
         node.LHS = finaliseNode node.LHS
         node.RHS = finaliseNode node.RHS
       if node.operator is "="
-        if node.LHS.type is "Binop" then writeToScope node.LHS.LHS, node.LHS.RHS
+        if node.LHS.type is "Binop" then scope.saveVariable node.LHS.LHS, node.LHS.RHS
         else if node.LHS.type is "Array"
-          writeToScope item.name, node.RHS.types.base for item in node.LHS.items
-        else writeToScope node.LHS.name, node.RHS.types
+          scope.saveVariable item.name, node.RHS.types.base for item in node.LHS.items
+        else scope.saveVariable node.LHS.name, node.RHS.types
       node.types = deriveType node
     when "Index"
       node.value = finaliseNode node.value
@@ -59,7 +60,7 @@ deriveType = (node) ->
         else if node.value >= -2147483648 then stringToType "i32"
         else if node.value >= -9.223372036854776e18 then stringToType "i64"
     when "String" then new PointerType stringToType "u8"
-    when "Identifier" then getFromScope node.name
+    when "Identifier" then scope.recallVariable node.name
     when "Array" then new PointerType node.items[0].types
     when "Function"
       if node.types.ret isnt null
@@ -77,7 +78,7 @@ deriveType = (node) ->
         if node.args.length is 0 then stringToType "void"
         else node.args[0].types
       else
-        (getFromScope node.callee).ret
+        (scope.recallVariable node.callee).ret
     when "Index" then node.types.base
     when "Binop"
       switch node.operator
@@ -93,14 +94,5 @@ deriveType = (node) ->
         when "=" then deriveType node.RHS
         when "<", ">", "<=", ">=", "==", "!=", "&&", "||" then stringToType "bool"
         when ":" then node.RHS
-
-# @type {(name: string) => Type}
-getFromScope = (name) ->
-  if currentScope is "" then scope[name]
-  else scope[currentScope][name] # For now assuming that function won't be put in functions
-
-writeToScope = (name, value) ->
-  if currentScope is "" then scope[name] = value
-  else scope[currentScope][name] = value
 
 module.exports = finalise
