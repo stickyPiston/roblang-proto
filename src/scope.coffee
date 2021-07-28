@@ -13,7 +13,8 @@ class Scope
 
   saveVariable: (name, value) ->
     @variables[name] = value
-    if @scopeChanges.reduce ((changes, acc) -> acc ||= name in changes), false
+    inChangesArray = `this.scopeChanges.reduce((acc, changes) => acc || changes.includes(name), false)`
+    if not inChangesArray
       @scopeChanges[@currentChangeIndex].push name
 
   recallVariable: (name) ->

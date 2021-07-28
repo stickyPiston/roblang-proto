@@ -30,7 +30,7 @@ finaliseNode = (node) ->
         if node.LHS.type is "Binop" then scope.saveVariable node.LHS.LHS, node.LHS.RHS
         else if node.LHS.type is "Array"
           scope.saveVariable item.name, node.RHS.types.base for item in node.LHS.items
-        else scope.saveVariable node.LHS.name, node.RHS.types
+        else if node.LHS.type isnt "Index" then scope.saveVariable node.LHS.name, node.RHS.types
       node.types = deriveType node
     when "Index"
       node.value = finaliseNode node.value

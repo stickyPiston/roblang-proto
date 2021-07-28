@@ -4,7 +4,6 @@ scope = new Scope
 
 check = (nodes) -> checkNode node for node in nodes
 checkNode = (node) ->
-  console.log node, scope
   if node.type is "Call"
     # Check if params match up
     func = scope.recallVariable node.callee
@@ -33,7 +32,7 @@ checkNode = (node) ->
         else scope.saveVariable node.LHS.LHS, node.LHS.RHS
       else if node.LHS.type is "Array"
         scope.saveVariable item.name, node.RHS.types.base for item in node.LHS.items
-      else scope.saveVariable node.LHS.name, node.RHS.types
+      else if node.LHS.type isnt "Index" then scope.saveVariable node.LHS.name, node.RHS.types
     else if node.operator isnt ":"
       check [node.LHS, node.RHS]
       unless ((isNumber node.LHS.types) and (isNumber node.RHS.types))

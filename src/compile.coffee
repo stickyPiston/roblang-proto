@@ -33,15 +33,16 @@ compileAssignment = (node) ->
     when "String" then res = new Variable (compileNode node.RHS), "String"
     when "Array" then res = new Variable (compileNode node.RHS), "Array"
     when "Index" then res = new Variable (compileNode node.RHS), "Index"
-    when "Identifier" then res = new Variable (compileNode node.RHS), "Identifier" # FIXME: Make this a copy assignment
+    when "Identifier" then res = new Variable (compileNode node.RHS), "Identifier"
     when "Call" then res = new Variable (compileNode node.RHS), "Call"
-    when "Number" then res = new Variable (compileNode node.RHS), "Number"
+    when "Number", "Binop" then res = new Variable (compileNode node.RHS), "Number"
 
   # Assign depending on the left-hand side
   switch node.LHS.type
     when "Index"
       ep = builder.CreateGEP (compileNode node.LHS.value), compileNode node.LHS.index
-      builder.CreateStore (builder.CreateLoad res.val.getType().getElementType(), res.val), ep
+      if res.type in ["Number", "Call", "String", "Parameter"] then builder.CreateStore res.val, ep
+      else builder.CreateStore (builder.CreateLoad res.val.getType().getElementType(), res.val), ep
     when "Array" # Array destructuring
       for item, index in node.LHS.items
         arr = compileNode node.RHS
@@ -59,7 +60,7 @@ compileAssignment = (node) ->
       else
         alloca = (scope.recallVariable extractName node).val
         builder.CreateStore res.val, alloca
-        scope.saveVariable (extractName node), res
+        # scope.saveVariable (extractName node), res
 
 compileDeclaration = (node) ->
   returnType = getLLVMType node.RHS.ret
@@ -72,9 +73,6 @@ compileBinop = (node) ->
     # Handle arity 1 operator
   else
     operands = {LHS: (compileNode node.LHS), RHS: (compileNode node.RHS)}
-    for operand of operands # FIXME
-      if node[operand].type is "Identifier" or node[operand].type is "Index"
-        operands[operand] = builder.CreateLoad (getLLVMType node[operand].types), operands[operand]
     switch node.operator
       when "+"
         builder.CreateIntCast (builder.CreateAdd operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
@@ -133,7 +131,7 @@ compileArray = (node) ->
 
 compileIdentifier = (node) ->
   variable = scope.recallVariable node.name
-  if variable.type is "String" or variable.type is "Parameter" then variable.val
+  if variable.type in ["String", "Parameter"] then variable.val
   else builder.CreateLoad (getLLVMType node.types), (scope.recallVariable node.name).val
 
 compileCall = (node) ->
