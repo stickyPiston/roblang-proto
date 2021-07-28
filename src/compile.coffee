@@ -54,13 +54,13 @@ compileAssignment = (node) ->
         if res.type is "Function" or res.type is "String"
           scope.saveVariable (extractName node), res
         else
+          console.log node, getLLVMType node.types
           alloca = builder.CreateAlloca (getLLVMType node.types), llvm.ConstantInt.get builder.getInt8Ty(), 1
           builder.CreateStore res.val, alloca
           scope.saveVariable (extractName node), new Variable alloca, res.type
       else
         alloca = (scope.recallVariable extractName node).val
         builder.CreateStore res.val, alloca
-        # scope.saveVariable (extractName node), res
 
 compileDeclaration = (node) ->
   returnType = getLLVMType node.RHS.ret
@@ -70,7 +70,10 @@ compileDeclaration = (node) ->
 
 compileBinop = (node) ->
   if node.LHS is null
-    # Handle arity 1 operator
+    operand = compileNode node.RHS
+    switch node.operator
+      when "~" then (builder.CreateNot operand)
+      when "!" then builder.CreateICmpEQ operand, llvm.ConstantInt.get (getLLVMType node.RHS.types), 0
   else
     operands = {LHS: (compileNode node.LHS), RHS: (compileNode node.RHS)}
     switch node.operator
@@ -116,11 +119,18 @@ compileBinop = (node) ->
         builder.CreateIntCast (builder.CreateXor operands.LHS, operands.RHS), (getLLVMType node.types), isSigned node.types
 
 compileIndex = (node) ->
-  if node.index.type is "Identifier"
-    index = compileNode node.index
-    builder.CreateGEP (compileNode node.value), builder.CreateIntCast (builder.CreateLoad index.getType().getElementType(), index), builder.getInt8Ty(), false
-  else
-    builder.CreateGEP (compileNode node.value), builder.CreateIntCast (compileNode node.index), builder.getInt8Ty(), false
+  arr = compileNode node.value
+  # Array literal indexing is a little different, weirdly enough
+  if node.value.type is "Array" then alloca = builder.CreateAlloca (getLLVMType node.value.types), llvm.ConstantInt.get builder.getInt8Ty(), 1
+  ep = builder.CreateGEP arr, builder.CreateIntCast (compileNode node.index), builder.getInt8Ty(), false
+
+  # I'm not sure why i need this, but the wrong result is yielded when this isn't there
+  if node.value.type is "Array"
+    value = builder.CreateLoad (getLLVMType node.types), ep
+    item = builder.CreateAlloca (getLLVMType node.types), llvm.ConstantInt.get builder.getInt8Ty(), 1
+    builder.CreateStore value, item
+    builder.CreateLoad (getLLVMType node.types), item
+  else builder.CreateLoad (getLLVMType node.types), ep
 
 compileArray = (node) ->
   alloca = builder.CreateAlloca (getLLVMType node.types.base), llvm.ConstantInt.get builder.getInt8Ty(), node.items.length

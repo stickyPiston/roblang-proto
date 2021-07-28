@@ -34,8 +34,9 @@ checkNode = (node) ->
         scope.saveVariable item.name, node.RHS.types.base for item in node.LHS.items
       else if node.LHS.type isnt "Index" then scope.saveVariable node.LHS.name, node.RHS.types
     else if node.operator isnt ":"
-      check [node.LHS, node.RHS]
-      unless ((isNumber node.LHS.types) and (isNumber node.RHS.types))
+      checkNode node.LHS if node.LHS isnt null
+      checkNode node.RHS
+      unless (node.LHS is null or isNumber node.LHS.types) and (isNumber node.RHS.types)
         console.error "No available operator #{node.LHS.types.name} #{node.operator} #{node.RHS.types.name}"
         process.exit 1
     else scope.saveVariable node.LHS, node.types

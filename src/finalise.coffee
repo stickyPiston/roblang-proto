@@ -24,7 +24,7 @@ finaliseNode = (node) ->
       if node.operator is ":"
         scope.saveVariable node.LHS, node.RHS
       else
-        node.LHS = finaliseNode node.LHS
+        node.LHS = finaliseNode node.LHS if node.LHS isnt null
         node.RHS = finaliseNode node.RHS
       if node.operator is "="
         if node.LHS.type is "Binop" then scope.saveVariable node.LHS.LHS, node.LHS.RHS
@@ -91,8 +91,8 @@ deriveType = (node) ->
             LHSbits = Number(LHStype.name[1..]); RHSbits = Number(LHStype.name[1..])
             signedness = if LHStype.name[0] is "i" or RHStype.name[0] is "i" then "i" else "u"
             stringToType signedness + Math.max LHSbits, RHSbits
-        when "=" then deriveType node.RHS
-        when "<", ">", "<=", ">=", "==", "!=", "&&", "||" then stringToType "bool"
+        when "=" then node.RHS.types
+        when "<", ">", "<=", ">=", "==", "!=", "&&", "||", "!" then stringToType "bool"
         when ":" then node.RHS
-
+        when "~" then node.RHS.types
 module.exports = finalise

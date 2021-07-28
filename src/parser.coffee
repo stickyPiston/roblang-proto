@@ -2,10 +2,13 @@
   NumberNode, FunctionNode, IndexNode, ArrayNode } = require "./nodes"
 { stringToType, FunctionType } = require "./types"
 
-operators = [
+arity2Operators = [
   "=", "+=", "-=", "/=", "*=", "||=", "&&=", "<<=", ">>=", "&=",
   "|=", "^=", "&&", "||", "^^", "<", ">", "<=", ">=", "==", "!=",
-  "+", "-", "&", "|", "^", "*", "/", "<<", ">>", "!", "~"
+  "+", "-", "&", "|", "^", "*", "/", "<<", ">>"
+]
+arity1Operators = [
+  "!", "*", "&", "~"
 ]
 
 parse = (tokens) ->
@@ -22,6 +25,11 @@ parse = (tokens) ->
   (parseExpression expression)[0] for expression in expressions
 
 parseExpression = (tokens, delims = [";"]) ->
+  if not tokens.length then return [null, []]
+  if tokens[0].value in arity1Operators
+    RHS = parseExpression tokens[1..]
+    return [(new BinopNode tokens[0].value, null, RHS[0]), RHS[1]]
+
   hasOperator = false
   if tokens.length is 0
     return [null, []]
@@ -32,13 +40,13 @@ parseExpression = (tokens, delims = [";"]) ->
       if token.value in [")", "]", "}"] then level--
       if token.value is ":" then inType = true
       if token.value is "->" and tokens[index - 1].value isnt ")" then inType = false
-      if (token.value in operators and level is 0 and token.type is "Operator") and not inType
+      if (token.value in arity2Operators and level is 0 and token.type is "Operator") and not inType
         hasOperator = true
-      else if token.value in operators and level is 0
+      else if token.value in arity2Operators and level is 0
         inType = false
 
   if hasOperator
-    for operator in operators
+    for operator in arity2Operators
       level = 0; endIndex = 0
       for token, index in tokens
         if token.value in ["(", "[", "{"] then level++
